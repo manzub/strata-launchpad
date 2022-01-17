@@ -23,7 +23,7 @@ const Airdrop = () => {
   const [form, updateForm] = useState({ airdroptype: 1, tokenaddress: '', tokensperuser: 0, _distrib: '', balance: 0 })
   const [droppingToken, setToken] = useState(null)
 
-  const [isApproved, setApprovedState] = useState(false)
+  const [isApproved, setApprovedState] = useState(null)
   const [waitingAsync, setWaitingAsync] = useState(false)
 
   const notify = useCallback(
@@ -43,25 +43,27 @@ const Airdrop = () => {
       let isAddress = web3.utils.isAddress(form.tokenaddress)
 
       if(isAddress && form.tokenaddress !== (null && '')) {
-        bscScanApi.fetchApi({ module: 'token', action: 'tokeninfo', contractaddress: form.tokenaddress }).then( async (response) => {
-          if(response.status === "1") {
-            const _token = response.result[0];
-            const responseData = await bscScanApi.fetchApi({ module: 'contract', action: 'getabi', address: form.tokenaddress })
-            if(responseData.status === "0") {
-              notify('danger', responseData.result, 'Token Error')
-            }else {
-              // abi functions
-              _token.contractabi = responseData.result
-              var contractABI = JSON.parse(responseData.result)
-              var MyContract = new web3.eth.Contract(contractABI, form.tokenaddress);
-              const balance = await MyContract.methods.balanceOf(accounts[0]).call();
-              let toStr = `${balance}`;
-              // TODO: use divisor instead
-              updateForm({ ...form, balance: toStr.substr(0, toStr.length - 18) })
-              setToken(_token)
+        try {
+          bscScanApi.fetchApi({ module: 'token', action: 'tokeninfo', contractaddress: form.tokenaddress }).then( async (response) => {
+            if(response.status === "1") {
+              const _token = response.result[0];
+              const responseData = await bscScanApi.fetchApi({ module: 'contract', action: 'getabi', address: form.tokenaddress })
+              if(responseData.status === "1") {
+                // abi functions
+                _token.contractabi = responseData.result
+                var contractABI = JSON.parse(responseData.result)
+                var MyContract = new web3.eth.Contract(contractABI, form.tokenaddress);
+                const balance = await MyContract.methods.balanceOf(accounts[0]).call();
+                let toStr = `${balance}`;
+                // TODO: use divisor instead
+                updateForm({ ...form, balance: toStr.substr(0, toStr.length - 18) })
+                setToken(_token)
+              } else notify('danger', responseData.result, 'Token Error')
             }
-          }
-        })
+          })
+        } catch (error) {
+          notify('danger', 'error occurred', 'Token Error')
+        } 
       } else notify('danger', 'Invalid address', 'Token Error')
     }
     setWaitingAsync(false)
@@ -69,15 +71,12 @@ const Airdrop = () => {
 
   const approveAirdrop = async () => {
     // approve airdrop
-    // 0xAa98D6AA2E53cFc56468919519277B9FC21Fdf65
-    setWaitingAsync(true)
+    setWaitingAsync(true);
     const isEmptyChecks = ['', ' '] // use case to check if fields are empty or not
     const expectedFields = 5
-    const errorFound = [];
     // check every single form field
     if(Object.keys(form).length === expectedFields) {
       let isValid = true
-
       Object.entries(form).forEach(field => {
         if (isEmptyChecks.includes(field[1])) {
           isValid = false
@@ -85,67 +84,101 @@ const Airdrop = () => {
         }
       })
 
-      if(isValid) {
-        // proceed
-        if(metamask.web3) {
-          const { accounts, web3 } = metamask
+      if(isValid && metamask.web3) {
+        const { accounts, web3 } = metamask
 
-          const distributionList = [];
-          let errorFound = 0;
-          let _distrib = form._distrib.split(",");
-          _distrib.length > 1 && _distrib.forEach((address, idx) => {
-            let x = address.trim();
-            if(x !== (null && '')) {
-              let isAddress = web3.utils.isAddress(x);
-              if(isAddress) {
-                distributionList.push(x)
-              } else {
-                errorFound += 1;
-                notify('danger', `Invalid address #${idx+1}`, 'Airdrop error')
-              }
+        const distributionList = [];
+        let errorFound = 0;
+        let _distrib = form._distrib.split(",");
+        _distrib.length > 1 && _distrib.forEach((address, idx) => {
+          let x = address.trim();
+          if(x !== (null && '')) {
+            if(web3.utils.isAddress(x)) {
+              distributionList.push(x)
+            } else {
+              errorFound += 1;
+              notify('danger', `Invalid address #${idx+1}`, 'Airdrop error')
             }
-          })
+          }
+        })
 
-          if(errorFound === 0 ) {
-            if(distributionList.length > 1) {
-              // proceed
+        if(errorFound === 0 ) {
+          if(distributionList.length > 1) {
             const amountToApprove = distributionList.length * form.tokensperuser
-
+            // abi contract for the token to airdrop
             var contractABI = JSON.parse(droppingToken.contractabi)
             var thisTokenContract = new web3.eth.Contract(contractABI, form.tokenaddress);
-
+            // abi contract the airdrop contract
+            // TODO: move airdrop functions to backend on onlyOwner modifier
             var airdropABI = MyContract.abi
-            const networkId = await web3.eth.net.getId();
-            const deployedNetwork = MyContract.networks[networkId]
-            var AirdropContract = new web3.eth.Contract(airdropABI, deployedNetwork && deployedNetwork.address)
-
+            const _contractaddress = '0x9DB269bf4ac28a029A2B3f0E814F53C9D75a67E2';
+            var AirdropContract = new web3.eth.Contract(airdropABI, _contractaddress)
+            // begin airdrop main functions approve->transfer->airdrop
             try {
-              const approved = await thisTokenContract.methods.approve('0x414f65979B81b4A46742117Fb6Fe28f8455Bca3a', amountToApprove + form.tokensperuser).send({ from: accounts[0] })
-              console.log(approved);
+              const value = parseInt(amountToApprove) + parseInt(form.tokensperuser)
+              // set airdrop token
+              await AirdropContract.methods.setTokenAddress(form.tokenaddress).send({ from: accounts[0] })
+              const approved = await thisTokenContract.methods.approve(_contractaddress, web3.utils.toWei(`${value}`, 'ether')).send({ from: accounts[0] })
               if(approved) {
                 // transfer tokens
+                await thisTokenContract.methods.transfer(_contractaddress, web3.utils.toWei(`${value}`, 'ether')).send({ from: accounts[0] })
+                setApprovedState(distributionList);
               }
             } catch (error) {
               notify('danger', 'Error occurred while approving token, try again: '+error.message, 'Airdrop error')
               console.log(error);
             }
-
-            } else notify('danger', 'all distribution list addresses are invalid', 'Airdrop error') 
-          } 
-        }
+          } else notify('danger', 'all distribution list addresses are invalid', 'Airdrop error') 
+        } 
       }
     }else notify('danger', `fill in all fields`, 'Airdrop error')
 
-    if(errorFound.length === 0) {
-      
-    }
     setTimeout(() => {
       setWaitingAsync(false)
     }, 1000);
   }
 
-  const proceedAirdrop = () => {
+  const sliceToChunks = (arr, size) => {
+    const res = [];
+    for (let i = 0; i < arr.length; i += size) {
+        const chunk = arr.slice(i, i + size);
+        res.push(chunk);
+    }
+    return res;
+  }
+
+  // TODO: test airdrop
+  const proceedAirdrop = async () => {
     // proceed with airdrop
+    if(metamask) {
+      const { accounts, web3 } = metamask;
+
+      var airdropABI = MyContract.abi
+      const networkId = await web3.eth.net.getId();
+      const deployedNetwork = MyContract.networks[networkId]
+      var AirdropContract = new web3.eth.Contract(airdropABI, deployedNetwork && deployedNetwork.address)
+
+      var distributionList = [];
+      if(isApproved.length > 200) {
+        distributionList = sliceToChunks(isApproved, 200);
+      } else distributionList.push(isApproved)
+
+      for (let index = 0; index < distributionList.length; index++) {
+        let gasPrice = 5;
+        try {
+          console.log('Airdrop started');
+          let r = await AirdropContract.methods.dropTokens(distributionList[index], web3.utils.toWei(`${form.tokensperuser}`, 'ether')).send({ from: accounts[0], gas: 4500000, gasPrice: gasPrice })
+          console.log('------------------------')
+          console.log("Allocation + transfer was successful.", r.gasUsed, "gas used. Spent:", r.gasUsed * gasPrice, "wei");
+          break;
+        } catch(error) {
+          notify('danger', error.message, 'Airdrop error')
+          console.log(error);
+        }
+        
+      }
+
+    }
   }
 
   return (
@@ -224,8 +257,8 @@ const Airdrop = () => {
                 </> }
                 <div className='mt-5 text-center'>
                   { droppingToken ? (<>
-                    <Button onClick={approveAirdrop} style={{marginRight:10}} rounded={0} color='primary'>Approve</Button>
-                    <Button onClick={proceedAirdrop} isDisable={!isApproved} rounded={0} color='primary'>Airdrop</Button>
+                    <Button onClick={approveAirdrop} style={{marginRight:10}} rounded={0} color='primary'>{ waitingAsync ? 'loading...' : 'Approve' }</Button>
+                    <Button onClick={proceedAirdrop} isDisable={!!!isApproved} rounded={0} color='primary'>{ !!isApproved && waitingAsync ? 'loading...' : 'Airdrop' }</Button>
                   </>) : null }
                 </div>
               </CardBody>

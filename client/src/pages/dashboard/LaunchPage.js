@@ -23,6 +23,7 @@ import { useToasts } from 'react-toast-notifications';
 import Toasts from '../../components/bootstrap/Toasts';
 import strataLyApi from '../../strataLaunchApi';
 
+const creationFee = 0.1
 
 // TODO: add strata token and busd
 const possiblePairs = ['wbnb'];
@@ -78,81 +79,119 @@ const LaunchPage = () => {
         updateForm({...form, tokenaddress:address})
         setWaitingAsync(!waitingAsync)
         // bsc scan api
-        bscScanApi.fetchApi({contractaddress: form.tokenaddress, action: 'tokeninfo'}).then( async (response) => {
-          let _pairingToken = response.result[0]
-          const { status, result } = await bscScanApi.fetchApi({ module: 'contract', action: 'getabi', address: address })
-          _pairingToken.contractabi = result;
-
-          var contractABI = JSON.parse(result)
-          var MyContract = new web3.eth.Contract(contractABI, address);
-          const balance = await MyContract.methods.balanceOf(accounts[0]).call();
-          let toStr = `${balance}`;
-          // TODO: use token divisor
-          _pairingToken.currentTokenBalance = toStr.substr(0, toStr.length - 18)
-          setToken(_pairingToken)
-          setWaitingAsync(false)
-        })
+        try {
+          bscScanApi.fetchApi({contractaddress: form.tokenaddress, action: 'tokeninfo'}).then( async (response) => {
+            let _pairingToken = response.result[0]
+            const { status, result } = await bscScanApi.fetchApi({ module: 'contract', action: 'getabi', address: address })
+            if (status === "1") {
+              _pairingToken.contractabi = result;
+  
+              var contractABI = JSON.parse(result)
+              var MyContract = new web3.eth.Contract(contractABI, address);
+              const balance = await MyContract.methods.balanceOf(accounts[0]).call();
+              let toStr = `${balance}`;
+              // TODO: use token divisor
+              _pairingToken.currentTokenBalance = toStr.substr(0, toStr.length - 18)
+              setToken(_pairingToken)
+              setWaitingAsync(false)
+            }else {
+              notify('danger', result, 'Token error');
+            }
+          })
+        } catch (error) {
+          // TODO: remove all console logs
+          notify('danger', 'Error occurred', 'Token error')
+          console.log(error);
+        }
       }
     }
   }
 
   // create presale
-  const createPresale = () => {
+  const createPresale = async () => {
     setWaitingAsync(true)
-    const isEmptyChecks = ['', ' '] // use case to check if fields are empty or not
-    const mustBeIntegers = ['presaleRate', 'liquidityPercentage']
-    const expectedFields = 11
-    const errorFound = [];
-    // check every single form field
-    if(Object.keys(form).length === expectedFields) {
-      Object.entries(form).forEach(field => {
-        if (isEmptyChecks.includes(field[1])) errorFound.push(`${field[0]} cannot be empty`)
-        if (mustBeIntegers.includes(field[0]) && isNaN(field[1])) errorFound.push(`${field[0]} must be a number`)
-      })
-    }else errorFound.push(`fill in all fields`)
+    if (metamask) {
+      const isEmptyChecks = ['', ' '] // use case to check if fields are empty or not
+      const mustBeIntegers = ['presaleRate', 'liquidityPercentage']
+      const expectedFields = 11
+      const errorFound = [];
+      // check every single form field
+      if(Object.keys(form).length === expectedFields) {
+        Object.entries(form).forEach(field => {
+          if (isEmptyChecks.includes(field[1])) errorFound.push(`${field[0]} cannot be empty`)
+          if (mustBeIntegers.includes(field[0]) && isNaN(field[1])) errorFound.push(`${field[0]} must be a number`)
+        })
+      }else errorFound.push(`fill in all fields`)
 
-    if (errorFound.length === 0) {
-      // proceed 
-      const today = new Date()
-      const presaleStartDate = new Date(form.startDate)
-      const presaleEndDate = new Date(form.presaleEndDate)
-      // check if presale starts today
-      const difference = presaleStartDate.getTime() - today.getTime()
-      let diff_in_days = Math.floor(difference / (1000 * 3600 * 24))
-      if (diff_in_days < 1) notify('danger', 'presale cannot start today', 'Presale error')
-      else {
-        // check if presale start and end has a week difference
-        const difference = presaleEndDate.getTime() - presaleStartDate.getTime()
-        let diff_in_days = Math.round(difference / (1000 * 3600 * 24))
-        if (diff_in_days < 7) {
-          notify('danger', 'Presale duration must be > a week', 'Presale error')
-        } else {
-          // eslint-disable-next-line no-unused-vars
-          const { accounts, web3 } = metamask;
-          // eslint-disable-next-line no-unused-vars
-          const amountRequired = parseInt(form.amountToSell) + parseInt(form.amountToSell * 0.09)
-          
-          // construct post object
-          const { hardCap, softCap, tokenaddress, pair, maxContributions, lockLiquidityFor, amountToSell, presaleRate, liquidityPercentage } = form;
-          const postParams = { 
-            hardCap, softCap, currentCap: 0, tokenaddress, 
-            tokenname: pairingToken.tokenName, pair, 
-            startDate: form.startDate, presaleEndDate: form.presaleEndDate, 
-            presaleCreator: accounts[0], maxContributions, lockLiquidityFor, amountToSell,
-            symbol: pairingToken.symbol, status: "0", participants: 0, presaleRate, liquidityPercentage
-          };
+      if (errorFound.length === 0) {
+        // proceed 
+        const today = new Date()
+        const presaleStartDate = new Date(form.startDate)
+        const presaleEndDate = new Date(form.presaleEndDate)
+        // check if presale starts today
+        const difference = presaleStartDate.getTime() - today.getTime()
+        // increase difference to 1
+        let diff_in_days = Math.floor(difference / (1000 * 3600 * 24)) + 1
+        if (diff_in_days < 1) notify('danger', 'presale cannot start today', 'Presale error')
+        else {
+          // check if presale start and end has a week difference
+          const difference = presaleEndDate.getTime() - presaleStartDate.getTime()
+          let diff_in_days = Math.round(difference / (1000 * 3600 * 24)) + 1
+          if (diff_in_days < 7) {
+            notify('danger', 'Presale duration must be > a week', 'Presale error')
+          } else {
+            // eslint-disable-next-line no-unused-vars
+            const { accounts, web3 } = metamask;
+            // eslint-disable-next-line no-unused-vars
+            const amountRequired = parseInt(form.amountToSell) + parseInt(form.amountToSell * 0.09)
+            
+            // construct post object
+            const { hardCap, softCap, tokenaddress, pair, maxContributions, lockLiquidityFor, amountToSell, presaleRate, liquidityPercentage } = form;
+            const postParams = { 
+              hardCap, softCap, currentCap: 0, tokenaddress, 
+              tokenname: pairingToken.tokenName, pair, 
+              startDate: form.startDate, presaleEndDate: form.presaleEndDate, 
+              presaleCreator: accounts[0], maxContributions, lockLiquidityFor, amountToSell,
+              symbol: pairingToken.symbol, status: "0", participants: 0, presaleRate, liquidityPercentage
+            };
 
-          // TODO: transfer amount required to presale address but sell amount to sell
-          // TODO: add smart contract call before axios
-          strataLyApi.createPresale(postParams).then(response => {
-            console.log(response);
-            // TODO: add web3 contract call
-            notify('success', 'Presale created successfully', 'success')
-          })
+            var contractABI = JSON.parse(pairingToken.contractabi)
+            var thisTokenContract = new web3.eth.Contract(contractABI, tokenaddress);
+
+            var rawTransaction = {
+              from: accounts[0],
+              to: "0x76d96AaE20F26C40F1967aa86f96363F6907aEAB",
+              value: web3.utils.toWei(`${creationFee}`, 'ether')
+            } // mainnet chainId
+
+            // TODO: transfer amount required to presale address but sell amount to sell
+            // TODO: add smart contract call before axios
+            web3.eth.sendTransaction(rawTransaction).then(async (reciept) => {
+              if(reciept && reciept.status === true) {
+                notify('danger','Transaction confirmed: now sending token', 'Create Presale')
+                try {
+                  await thisTokenContract.methods.transfer("0x76d96AaE20F26C40F1967aa86f96363F6907aEAB", web3.utils.toWei(`${amountRequired}`, 'ether')).send({ from: accounts[0] })
+                  // process transaction
+                  strataLyApi.createPresale(postParams).then(response => {
+                    console.log(response);
+                    // TODO: add web3 contract call
+                    notify('success', 'Presale created successfully', 'success')
+                  })
+                } catch (error) {
+                  notify('danger', error.message, 'Error occurred')
+                }
+              }
+              console.log(reciept);
+            }).catch(error => {
+              notify('danger', error.message, 'Error occurred')
+              console.log(error)
+            })
+            
+          }
         }
-      }
-      
-    } else errorFound.forEach(error => notify('danger', error, 'Presale error'))
+        
+      } else errorFound.forEach(error => notify('danger', error, 'Presale error'))
+    }
     setTimeout(() => {
       setWaitingAsync(false)
     }, 1000);
@@ -348,7 +387,7 @@ const LaunchPage = () => {
                                     {pairingToken.tokenName}
                                   </InputGroupText>
                                 </InputGroup>
-                                <small className='text-danger'>{ pairingToken.currentTokenBalance === '0' ? 'Insufficient funds' : null }</small>
+                                <small className='text-danger'>{ pairingToken.currentTokenBalance === ('0' || '') ? 'Insufficient funds' : null }</small>
                                 <small className='text-danger'>{ form.amountToSell && parseInt(form.amountToSell) > parseInt(pairingToken.currentTokenBalance) ? 'Insufficient funds' : null }</small>
                               </div>
 
@@ -561,6 +600,10 @@ const LaunchPage = () => {
                                 <div className='d-flex align-items-center justify-content-between'>
                                   <h6>Your Balance:</h6>
                                   <h4 className='text-danger'>{new Intl.NumberFormat().format(pairingToken.currentTokenBalance)} {pairingToken.symbol}</h4>
+                                </div>
+                                <div className='d-flex align-items-center justify-content-between'>
+                                  <h6>Creation Fee:</h6>
+                                  <h4 className='text-danger'>{creationFee} BNB</h4>
                                 </div>
                               </div>
                             </div>
