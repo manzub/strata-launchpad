@@ -1,0 +1,21 @@
+@import 'variables';
+
+@each $type, $value in $notification-types {
+	.notification__item--#{$type} {
+		@include backdrop-filter-blur(0.7rem);
+
+		background-color: rgba(shade-color($value, 5), 0.65);
+
+		.notification__timer {
+			background-color: $value;
+		}
+
+		.notification__timer-filler {
+			background-color: $white;
+		}
+
+		.notification__close {
+			background-color: $value;
+		}
+	}
+}

@@ -1,0 +1,28 @@
+.brandname {
+  display: flex;
+}
+
+.brandname > h5 {
+  display: flex;
+  align-items: center;
+  margin-right: 20px;
+}
+
+.nav-pills .nav-link {
+  border-radius: 0px !important;
+}
+
+.svg-badge:before {
+  content: "●";
+  /* display: block; */
+  color: #4efed6;
+  position: relative;
+  top: -1px;
+  /* margin-right: 1em; */
+}
+
+@media screen and (max-width: 768px) {
+  .brandname {
+    display: block;
+  }
+}

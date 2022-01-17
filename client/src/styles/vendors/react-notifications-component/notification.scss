@@ -1,0 +1,123 @@
+@use 'sass:math';
+
+@import './containers';
+@import './types';
+
+@keyframes timer {
+	0% {
+		width: 100%;
+	}
+
+	100% {
+		width: 0%;
+	}
+}
+
+.notifications-component {
+	position: fixed;
+	z-index: math.round(9000);
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+
+.notification__item {
+	position: relative;
+	display: flex;
+	margin-bottom: $notification-space;
+	border-radius: $notification-border-radius;
+	box-shadow: $notification-box-shadow;
+	cursor: pointer;
+}
+
+.notification-container--top-full .notification__item,
+.notification-container--bottom-full .notification__item {
+	margin-bottom: 0;
+	border-radius: 0;
+}
+
+.notification__timer {
+	width: 100%;
+	height: $notification-timer-height;
+	margin-top: $notification-timer-top;
+	border-radius: $notification-border-radius;
+}
+
+.notification__timer-filler {
+	height: $notification-timer-height;
+	border-radius: $notification-border-radius;
+}
+
+.notification__title {
+	margin-top: $notification-space * 0.5;
+	margin-bottom: $notification-space * 0.5;
+	color: $white;
+	font-size: $font-size-root;
+	font-weight: 700;
+}
+
+.notification__message {
+	max-width: calc(100% - #{$notification-space});
+	margin-top: 0;
+	margin-bottom: 0;
+	color: $white;
+	font-size: $font-size-root;
+	line-height: 150%;
+	word-wrap: break-word;
+}
+
+.notification__content {
+	display: inline-block;
+	width: 100%;
+	padding: ($notification-space * 0.5) $notification-space;
+}
+
+.notification__close {
+	position: absolute;
+	top: $notification-close-gutter * -1;
+	left: $notification-close-gutter * -1;
+	display: inline-block;
+	width: $notification-close-size;
+	height: $notification-close-size;
+	border-radius: 50%;
+	opacity: 0;
+	transition: $transition-fade;
+
+	@at-root .notification__item:hover & {
+		opacity: 1;
+	}
+
+	&::after {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		color: $white;
+		content: '\D7';
+		font-size: $notification-close-size;
+		transform: translate(-50%, -50%);
+	}
+}
+
+.notification-container--mobile-top .notification__item,
+.notification-container--mobile-bottom .notification__item,
+.notification-container--mobile-top .notification,
+.notification-container--mobile-bottom .notification {
+	width: 100%;
+	max-width: 100%;
+}
+
+.notification-container--top-right .notification,
+.notification-container--bottom-right .notification {
+	margin-left: auto;
+}
+
+.notification-container--top-left .notification,
+.notification-container--bottom-left .notification {
+	margin-right: auto;
+}
+
+.notification-container--mobile-top .notification,
+.notification-container--mobile-bottom .notification {
+	margin-right: auto;
+	margin-left: auto;
+}

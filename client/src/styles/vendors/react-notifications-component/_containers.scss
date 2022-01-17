@@ -1,0 +1,96 @@
+.notification-container--top-center,
+.notification-container--top-left,
+.notification-container--top-right,
+.notification-container--bottom-center,
+.notification-container--bottom-left,
+.notification-container--bottom-right,
+.notification-container--center,
+.notification-container--top-full,
+.notification-container--bottom-full {
+	position: absolute;
+	min-width: $notification-min-width;
+	pointer-events: all;
+}
+
+.notification-container--center,
+.notification-container--top-center,
+.notification-container--bottom-center {
+	left: calc(50% - (#{$notification-max-width} / 2));
+	display: flex;
+	max-width: $notification-max-width;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
+.notification-container--center {
+	top: $notification-gutter;
+	height: 100%;
+	pointer-events: none;
+}
+
+.notification-container--top-full,
+.notification-container--bottom-full {
+	width: 100%;
+	min-width: 100%;
+}
+
+.notification-container--bottom-full {
+	bottom: 0;
+}
+
+.flex-center {
+	display: flex;
+	min-width: $notification-min-width;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	pointer-events: all;
+}
+
+.notification-container--top-center {
+	top: $notification-gutter;
+}
+
+.notification-container--bottom-center {
+	bottom: $notification-gutter;
+}
+
+.notification-container--top-left {
+	top: $notification-gutter;
+	left: $notification-gutter;
+}
+
+.notification-container--top-right {
+	top: $notification-gutter;
+	right: $notification-gutter;
+}
+
+.notification-container--bottom-left {
+	bottom: $notification-gutter;
+	left: $notification-gutter;
+}
+
+.notification-container--bottom-right {
+	right: $notification-gutter;
+	bottom: $notification-gutter;
+}
+
+.notification-container--mobile-top,
+.notification-container--mobile-bottom {
+	position: absolute;
+	pointer-events: all;
+}
+
+.notification-container--mobile-top {
+	top: $notification-gutter;
+	right: $notification-gutter;
+	left: $notification-gutter;
+}
+
+.notification-container--mobile-bottom {
+	right: $notification-gutter;
+	bottom: $notification-gutter;
+	left: $notification-gutter;
+	margin-bottom: $notification-gutter * 0.75;
+}

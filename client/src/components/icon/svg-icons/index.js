@@ -1,0 +1,14 @@
+export { default as BinanceCoinBnbLogo } from "./BinanceCoinBnbLogo";
+export { default as BitcoinBtcLogo } from "./BitcoinBtcLogo";
+export { default as CustomApple } from "./CustomApple";
+export { default as CustomFacebook } from "./CustomFacebook";
+export { default as CustomFrance } from "./CustomFrance";
+export { default as CustomGoogle } from "./CustomGoogle";
+export { default as CustomHtml5 } from "./CustomHtml5";
+export { default as CustomPayoneer } from "./CustomPayoneer";
+export { default as CustomPaypal } from "./CustomPaypal";
+export { default as CustomReact } from "./CustomReact";
+export { default as EthereumEthLogo } from "./EthereumEthLogo";
+export { default as PancakeswapCakeLogo } from "./PancakeswapCakeLogo";
+export { default as StrataTodayLogo } from "./StrataTodayLogo";
+export { default as UniswapUniLogo } from "./UniswapUniLogo";
