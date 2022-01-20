@@ -32,7 +32,7 @@ const Dashboard = () => {
 		<PageWrapper title={combineMenu.dashboard.text}>
 			<Page container='fluid'>
         <div className='row'>
-          {/* market value for top tokens */}
+          {/* TODO: market value for top tokens */}
           <div className='col-md-12 mb-5'>
             <div className='intro-text d-flex align-items-center justify-content-between'>
               <div className='info_left'></div>
@@ -141,7 +141,6 @@ const Dashboard = () => {
                     )}
                     stretch
                     shadow='sm'>
-                      {/* TODO: coin info goes here */}
                       <CardBody>
                         <div className='' style={{height:20}}></div>
                         <div className='text-center pb-3'>
@@ -213,7 +212,6 @@ const Dashboard = () => {
 
                                 <div className='mt-2 d-flex align-items-center justify-content-between'>
                                   <h6>{item.participants} participnts</h6>
-                                  {/* TODO: calculate percentage increase */}
                                   <h6 className='text-success'>{100 * ((item.currentCap / 0) / 0)}% <Icon icon={'ArrowUp'} /></h6>
                                 </div>
                               </div>
@@ -257,7 +255,6 @@ const Dashboard = () => {
                       )}
                       stretch
                       shadow='sm'>
-                        {/* TODO: coin info goes here */}
                       <CardBody>
                         <div className='' style={{height:20}}></div>
                         <div className='text-center pb-3'>
@@ -329,7 +326,6 @@ const Dashboard = () => {
 
                                 <div className='mt-2 d-flex align-items-center justify-content-between'>
                                   <h6>{item.participants} participnts</h6>
-                                  {/* TODO: calculate percentage increase */}
                                   <h6 className='text-success'>{100 * ((item.currentCap / 0) / 0)}% <Icon icon={'ArrowUp'} /></h6>
                                 </div>
                               </div>

@@ -23,7 +23,7 @@ import bscScanApi from "../../bscScanApi";
 import Toasts from '../../components/bootstrap/Toasts';
 import { useToasts } from 'react-toast-notifications';
 
-
+// TODO: on completion, add withdraw button when logged in with transfer bnb route in backend
 const SingleToken = () => {
   const { metamask, tokensAndPairs } = useSelector(state => state);
   const { address } = useParams();
@@ -214,6 +214,13 @@ const SingleToken = () => {
                   <CardTitle>Back To Tokens List</CardTitle>
                 </CardLabel>
                 <CardActions>
+                  {/* TODO: add published param */}
+                  { !isPresaleCreator ? (<>
+                    { currentToken.status === '2' && currentToken.isPublished ? (<Button isLight isOutline rounded={0} color='primary' style={{padding:15,fontSize:15}}>Claim Tokens</Button>) : null }
+                    { !['0','1','2'].includes(currentToken.status) ? (<Button isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>Collect Refund</Button>) : null }
+                  </>) : null }
+
+                  
                   { isPresaleCreator ? (<Badge className='p-4' style={{fontSize:15}} rounded={0} isLight color='warning'>Edit Presale</Badge>) : null }
                   <Badge className='text-capitalize' style={{padding:20,fontSize:15}} color={badgeColor1} rounded={0} isLight>{statusToText(currentToken.status)}</Badge>
                 </CardActions>
@@ -529,7 +536,6 @@ const SingleToken = () => {
                           <td>Contract Address</td>
                           <td>{ currentToken.bscScanApi ?  currentToken.bscScanApi.contractAddress : 'null'}</td>
                         </tr>
-                        {/* TODO: get total supply from bscscan */}
                         <tr>
                           <td>Total Supply</td>
                           <td>{ currentToken.bscScanApi ? `${new Intl.NumberFormat().format(currentToken.bscScanApi.totalSupply.substr(0, currentToken.bscScanApi.totalSupply.length - currentToken.bscScanApi.divisor))}` : 'loading...' }</td>

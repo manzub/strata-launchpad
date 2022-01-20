@@ -13,8 +13,9 @@ import { useSelector } from 'react-redux';
 import bscScanApi from "../../bscScanApi";
 import { useToasts } from 'react-toast-notifications';
 import Toasts from '../../components/bootstrap/Toasts';
-// contract
-import MyContract from '../../contracts/Airdrop.json';
+import strataLyApi, { devaddress } from '../../strataLaunchApi';
+
+const creationFee = 0.001;
 
 const Airdrop = () => {
   const { metamask } = useSelector(state => state);
@@ -34,6 +35,8 @@ const Airdrop = () => {
       { autoDismiss: false }
     ), [addToast]
   )
+
+  const clearAsync = () => setWaitingAsync(false)
 
   const handleTokenInput = () => {
     setToken(null)
@@ -104,38 +107,55 @@ const Airdrop = () => {
 
         if(errorFound === 0 ) {
           if(distributionList.length > 1) {
-            const amountToApprove = distributionList.length * form.tokensperuser
-            // abi contract for the token to airdrop
-            var contractABI = JSON.parse(droppingToken.contractabi)
-            var thisTokenContract = new web3.eth.Contract(contractABI, form.tokenaddress);
-            // abi contract the airdrop contract
-            // TODO: move airdrop functions to backend on onlyOwner modifier
-            var airdropABI = MyContract.abi
-            const _contractaddress = '0x9DB269bf4ac28a029A2B3f0E814F53C9D75a67E2';
-            var AirdropContract = new web3.eth.Contract(airdropABI, _contractaddress)
-            // begin airdrop main functions approve->transfer->airdrop
-            try {
-              const value = parseInt(amountToApprove) + parseInt(form.tokensperuser)
-              // set airdrop token
-              await AirdropContract.methods.setTokenAddress(form.tokenaddress).send({ from: accounts[0] })
-              const approved = await thisTokenContract.methods.approve(_contractaddress, web3.utils.toWei(`${value}`, 'ether')).send({ from: accounts[0] })
-              if(approved) {
-                // transfer tokens
-                await thisTokenContract.methods.transfer(_contractaddress, web3.utils.toWei(`${value}`, 'ether')).send({ from: accounts[0] })
-                setApprovedState(distributionList);
-              }
-            } catch (error) {
+            // pay creation fee
+            // TODO: remove after test
+            web3.eth.sendTransaction({ from: accounts[0], to: devaddress, value: web3.utils.toWei(`${creationFee}`, 'ether') }).then(async (reciept) => {
+              if (reciept && reciept.status === true) {
+                notify('warning','Confirmed creation fee, proceeding with airdrop', 'Create Presale')
+                // abi contract for the token to airdrop
+                var thisTokenContract = new web3.eth.Contract(JSON.parse(droppingToken.contractabi), form.tokenaddress);
+                const _contractaddress = '0x9DB269bf4ac28a029A2B3f0E814F53C9D75a67E2';
+                try {
+                  // set airdrop token
+                  const response = await strataLyApi.setTokenAddress({ tokenaddress: form.tokenaddress })
+                  if(response.status === 1) {
+                    const amountToApprove = distributionList.length * form.tokensperuser
+                    const value = parseInt(amountToApprove) + parseInt(form.tokensperuser)
+                    const approved = await thisTokenContract.methods.approve(_contractaddress, web3.utils.toWei(`${value}`, 'ether')).send({ from: accounts[0] })
+                    if(approved) {
+                      notify('success', response.message + ', transfer tokens to begin airdrop', 'Airdop Info')
+                      // transfer tokens
+                      await thisTokenContract.methods.transfer(_contractaddress, web3.utils.toWei(`${value}`, 'ether')).send({ from: accounts[0] })
+                      notify('success', 'Proceed to begin airdrop', 'Airdop Info')
+                      setApprovedState(distributionList);
+                      clearAsync();
+                    }
+                  } else {
+                    notify('danger', response.message, 'Airdrop error')
+                    clearAsync()
+                  }
+                  
+                } catch (error) {
+                  notify('danger', 'Error occurred while approving token, try again: '+error.message, 'Airdrop error')
+                  clearAsync()
+                  console.log(error);
+                }
+              } else clearAsync()
+            }).catch(error => {
               notify('danger', 'Error occurred while approving token, try again: '+error.message, 'Airdrop error')
+              clearAsync()
               console.log(error);
-            }
-          } else notify('danger', 'all distribution list addresses are invalid', 'Airdrop error') 
-        } 
-      }
-    }else notify('danger', `fill in all fields`, 'Airdrop error')
-
-    setTimeout(() => {
-      setWaitingAsync(false)
-    }, 1000);
+            })
+          } else {
+            notify('danger', 'all distribution list addresses are invalid', 'Airdrop error') 
+            clearAsync()
+          }
+        } else clearAsync()
+      } else clearAsync()
+    }else {
+      notify('danger', `fill in all fields`, 'Airdrop error')
+      clearAsync()
+    }
   }
 
   const sliceToChunks = (arr, size) => {
@@ -147,37 +167,30 @@ const Airdrop = () => {
     return res;
   }
 
-  // TODO: test airdrop
+  // TODO: test airdrop tokens
   const proceedAirdrop = async () => {
+    setWaitingAsync(true)
     // proceed with airdrop
     if(metamask) {
-      const { accounts, web3 } = metamask;
+      if(form.creatoremail) {
+        var distributionList = [];
+        if(isApproved.length > 200) {
+          distributionList = sliceToChunks(isApproved, 200);
+        } else distributionList.push(isApproved)
 
-      var airdropABI = MyContract.abi
-      const networkId = await web3.eth.net.getId();
-      const deployedNetwork = MyContract.networks[networkId]
-      var AirdropContract = new web3.eth.Contract(airdropABI, deployedNetwork && deployedNetwork.address)
-
-      var distributionList = [];
-      if(isApproved.length > 200) {
-        distributionList = sliceToChunks(isApproved, 200);
-      } else distributionList.push(isApproved)
-
-      for (let index = 0; index < distributionList.length; index++) {
-        let gasPrice = 5;
         try {
-          console.log('Airdrop started');
-          let r = await AirdropContract.methods.dropTokens(distributionList[index], web3.utils.toWei(`${form.tokensperuser}`, 'ether')).send({ from: accounts[0], gas: 4500000, gasPrice: gasPrice })
-          console.log('------------------------')
-          console.log("Allocation + transfer was successful.", r.gasUsed, "gas used. Spent:", r.gasUsed * gasPrice, "wei");
-          break;
-        } catch(error) {
-          notify('danger', error.message, 'Airdrop error')
+          const response = await strataLyApi.dropTokens({ distributionList, tokensperuser: form.tokensperuser, creatorEmail: form.creatoremail })
+          console.log(response);
+          notify('success', response.message, 'Airdrop Completed!')
+          clearAsync();
+        } catch (error) {
           console.log(error);
+          notify('danger', error.message, 'Airdrop error')
+          clearAsync()
         }
-        
+      } else {
+        notify('danger', 'enter your email', 'Airdrop Error')
       }
-
     }
   }
 
@@ -209,8 +222,7 @@ const Airdrop = () => {
                       </ul>
                     </div>
 
-                    {/* TODO: add fees */}
-                    <h5 className='text-center'>Airdrop Fees: 0.1 BNB</h5>
+                    <h5 className='text-center'>Airdrop Fees: {creationFee} BNB</h5>
                     <InputGroup>
                       <Input 
                       type='text'
@@ -250,17 +262,27 @@ const Airdrop = () => {
                         </InputGroup>
                         <small className='text-center'>Total tokens being airdropped: <strong className='text-secondary'>{ form.tokensperuser !== '' ? parseInt(form.tokensperuser) * form._distrib.split(",").length : 0 }</strong></small>
                       </div>
+
+                      { isApproved ? (<>
+                        <h5>Enter your email address to recieve an alert when the airdrop is done.</h5>
+                        <Input 
+                        ariaLabel='email'
+                        type='email'
+                        placeholder='your email address'
+                        onChange={(event) => updateForm({ ...form, creatoremail: event.target.value })}
+                        />
+                      </>) : null }
+                    </>) : null }
+                  </div>
+                  <div className='mt-5 text-center'>
+                    { droppingToken ? (<>
+                      <Button onClick={approveAirdrop} isDisable={waitingAsync || !!isApproved} style={{marginRight:10}} rounded={0} color='primary'>{ waitingAsync ? 'loading...' : 'Approve' }</Button>
+                      <Button onClick={proceedAirdrop} isDisable={(waitingAsync || !isApproved)} rounded={0} color='primary'>{ !!isApproved && waitingAsync ? 'loading...' : 'Airdrop' }</Button>
                     </>) : null }
                   </div>
                 </>) : <>
                   <Button style={{width:'100%'}} isLight isDisable rounded={0} color='warning' ><Icon icon='ArrowUpward' /> Connect Wallet to continue</Button>
                 </> }
-                <div className='mt-5 text-center'>
-                  { droppingToken ? (<>
-                    <Button onClick={approveAirdrop} style={{marginRight:10}} rounded={0} color='primary'>{ waitingAsync ? 'loading...' : 'Approve' }</Button>
-                    <Button onClick={proceedAirdrop} isDisable={!!!isApproved} rounded={0} color='primary'>{ !!isApproved && waitingAsync ? 'loading...' : 'Airdrop' }</Button>
-                  </>) : null }
-                </div>
               </CardBody>
             </Card>
           </div>

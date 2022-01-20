@@ -1,7 +1,8 @@
 const { default:  axios } = require('axios');
 
-const baseUrl = 'https://accounts.strata.ly/api'
-export const devaddress = "0x76d96AaE20F26C40F1967aa86f96363F6907aEAB";
+const baseUrl = 'https://accounts.strata.ly/api';
+const airdropApi = 'http://localhost:5001';
+export const devaddress = process.env.DEV_ADDRESS || "0x76d96AaE20F26C40F1967aa86f96363F6907aEAB";
 
 const strataLyApi = {
   async allPresales() {
@@ -37,6 +38,17 @@ const strataLyApi = {
     const response = await axios.post(url, props)
     const { status } = response.data;
     if(status === "1") return { status }
+    return response.data
+  },
+  // airdrop routes
+  async setTokenAddress(props) {
+    const url = airdropApi + '/set-airdrop-token';
+    const response = await axios.post(url, props)
+    return response.data
+  },
+  async dropTokens(props) {
+    const url = airdropApi + '/airdrop-tokens';
+    const response = await axios.post(url, props)
     return response.data
   }
 }

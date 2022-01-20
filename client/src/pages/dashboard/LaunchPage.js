@@ -21,11 +21,12 @@ import bscScanApi from '../../bscScanApi';
 import { hideAddress } from '../../methods'
 import { useToasts } from 'react-toast-notifications';
 import Toasts from '../../components/bootstrap/Toasts';
-import strataLyApi from '../../strataLaunchApi';
+import strataLyApi, { devaddress } from '../../strataLaunchApi';
 
-const creationFee = 0.1
+const creationFee = 0.001
 
 // TODO: add strata token and busd
+// TODO: add fairlaunch option using get params
 const possiblePairs = ['wbnb'];
 
 const LaunchPage = () => {
@@ -61,6 +62,8 @@ const LaunchPage = () => {
       { autoDismiss: false }
     ), [addToast]
   )
+
+  const clearAsync = () => setWaitingAsync(false)
 
   useEffect(()=>{
     // check if every form field is filled before allow submit button
@@ -132,13 +135,17 @@ const LaunchPage = () => {
         const difference = presaleStartDate.getTime() - today.getTime()
         // increase difference to 1
         let diff_in_days = Math.floor(difference / (1000 * 3600 * 24)) + 1
-        if (diff_in_days < 1) notify('danger', 'presale cannot start today', 'Presale error')
+        if (diff_in_days < 1) {
+          notify('danger', 'presale cannot start today', 'Presale error')
+          clearAsync()
+        }
         else {
           // check if presale start and end has a week difference
           const difference = presaleEndDate.getTime() - presaleStartDate.getTime()
           let diff_in_days = Math.round(difference / (1000 * 3600 * 24)) + 1
           if (diff_in_days < 7) {
             notify('danger', 'Presale duration must be > a week', 'Presale error')
+            clearAsync()
           } else {
             // eslint-disable-next-line no-unused-vars
             const { accounts, web3 } = metamask;
@@ -160,41 +167,42 @@ const LaunchPage = () => {
 
             var rawTransaction = {
               from: accounts[0],
-              to: "0x76d96AaE20F26C40F1967aa86f96363F6907aEAB",
+              to: devaddress,
               value: web3.utils.toWei(`${creationFee}`, 'ether')
             } // mainnet chainId
 
-            // TODO: transfer amount required to presale address but sell amount to sell
-            // TODO: add smart contract call before axios
+            // TODO: test create presale
             web3.eth.sendTransaction(rawTransaction).then(async (reciept) => {
               if(reciept && reciept.status === true) {
-                notify('danger','Transaction confirmed: now sending token', 'Create Presale')
+                notify('warning','Confirmed creation fee: now sending token', 'Create Presale')
                 try {
                   await thisTokenContract.methods.transfer("0x76d96AaE20F26C40F1967aa86f96363F6907aEAB", web3.utils.toWei(`${amountRequired}`, 'ether')).send({ from: accounts[0] })
                   // process transaction
                   strataLyApi.createPresale(postParams).then(response => {
                     console.log(response);
-                    // TODO: add web3 contract call
                     notify('success', 'Presale created successfully', 'success')
+                    clearAsync()
                   })
                 } catch (error) {
                   notify('danger', error.message, 'Error occurred')
+                  clearAsync()
                 }
-              }
+              } else clearAsync()
               console.log(reciept);
             }).catch(error => {
               notify('danger', error.message, 'Error occurred')
+              clearAsync()
               console.log(error)
             })
             
           }
         }
         
-      } else errorFound.forEach(error => notify('danger', error, 'Presale error'))
+      } else {
+        errorFound.forEach(error => notify('danger', error, 'Presale error'))
+        clearAsync()
+      }
     }
-    setTimeout(() => {
-      setWaitingAsync(false)
-    }, 1000);
   }
 
   return(
@@ -617,7 +625,7 @@ const LaunchPage = () => {
                           <Button onClick={()=>navigate('/dashboard/tokens/live')} className='rounded-0' color='danger' size='lg'>Cancel</Button>
                         </CardFooterLeft>
                         <CardFooterRight>
-                          <Button isDisable={buttonStatus} onClick={createPresale} className='rounded-0' color='success' size='lg'>{ waitingAsync ? 'loading...' : 'Create Presale' }</Button>
+                          <Button isDisable={(buttonStatus || waitingAsync)} onClick={createPresale} className='rounded-0' color='success' size='lg'>{ waitingAsync ? 'loading...' : 'Create Presale' }</Button>
                         </CardFooterRight>
                       </CardFooter>
                     </Card>

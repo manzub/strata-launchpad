@@ -7,7 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "backend-dev": "nodemon server/index.js --ignore ./client",
+    "backend-start": "node server/index.js"
   },
   "keywords": [],
   "author": "",
@@ -15,9 +16,13 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.4.2",
     "@truffle/hdwallet-provider": "^2.0.0",
-    "dotenv": "^14.1.0"
+    "cors": "^2.8.5",
+    "dotenv": "^14.1.0",
+    "express": "^4.17.2",
+    "web3": "^1.7.0"
   },
   "devDependencies": {
+    "nodemon": "^2.0.15",
     "truffle-plugin-verify": "^0.5.20"
   }
 }
