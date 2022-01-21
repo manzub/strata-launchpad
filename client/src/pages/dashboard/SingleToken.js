@@ -23,7 +23,7 @@ import bscScanApi from "../../bscScanApi";
 import Toasts from '../../components/bootstrap/Toasts';
 import { useToasts } from 'react-toast-notifications';
 
-// TODO: on completion, add withdraw button when logged in with transfer bnb route in backend
+
 const SingleToken = () => {
   const { metamask, tokensAndPairs } = useSelector(state => state);
   const { address } = useParams();
@@ -76,6 +76,8 @@ const SingleToken = () => {
       { autoDismiss: false }
     ), [addToast]
   )
+
+  const clearAsync = () => setWaitingAsync(false)
 
   useEffect(() => {
     // get additional token info from bscscan
@@ -186,7 +188,51 @@ const SingleToken = () => {
     }
   }
 
-  // TODO: airdrop on completion
+  // TODO: Add collected funds in DB
+  // TODO: add status in contributions table with 1 => claimed && 2 => refund, defualt is 0
+  const claimTokens = async () => {
+    if(metamask) {
+      setWaitingAsync(true);
+      const { accounts } = metamask;
+      // proceed
+      if(!isPresaleCreator && currentToken.status === '2') {
+        const contributions = myContributions;
+        let listingRate = currentToken.presaleRate - (currentToken.presaleRate * 0.10);
+        const tokenstoclaim = contributions * listingRate;
+  
+        try {
+          const response = await strataLyApi.transferToken({ transferTo: accounts[0], amount: tokenstoclaim, tokenaddress: currentToken.tokenaddress, apiKey:process.env.REACT_APP_BSC_APIKEY })
+          notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
+        } catch (error) {
+          notify('warning', error.message, 'Error')
+          console.log(error);
+        }
+      } else {
+        notify('warning', 'Cannot claim tokens yet', 'Error')
+        clearAsync()
+      }
+    }
+  }
+
+  const collectRefund = async () => {
+    if(metamask) {
+      setWaitingAsync(true);
+      const { accounts } = metamask;
+      // proceed
+      if(!isPresaleCreator && currentToken.status === '2') {
+        try {
+          const response = await strataLyApi.transferEther({ transferTo: accounts[0], amount: myContributions })
+          notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
+        } catch (error) {
+          notify('warning', error.message, 'Error')
+          console.log(error);
+        }
+      } else {
+        notify('warning', 'Cannot claim tokens yet', 'Error')
+        clearAsync()
+      }
+    }
+  }
 
   return(
     <PageWrapper>
@@ -216,11 +262,11 @@ const SingleToken = () => {
                 <CardActions>
                   {/* TODO: add published param */}
                   { !isPresaleCreator ? (<>
-                    { currentToken.status === '2' && currentToken.isPublished ? (<Button isLight isOutline rounded={0} color='primary' style={{padding:15,fontSize:15}}>Claim Tokens</Button>) : null }
-                    { !['0','1','2'].includes(currentToken.status) ? (<Button isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>Collect Refund</Button>) : null }
+                    { currentToken.status === '2' && currentToken.isPublished ? (<Button onClick={claimTokens} isLight isOutline rounded={0} color='primary' style={{padding:15,fontSize:15}}>Claim Tokens</Button>) : null }
+                    { !['0','1','2'].includes(currentToken.status) ? (<Button onClick={collectRefund} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>Collect Refund</Button>) : null }
                   </>) : null }
 
-                  
+
                   { isPresaleCreator ? (<Badge className='p-4' style={{fontSize:15}} rounded={0} isLight color='warning'>Edit Presale</Badge>) : null }
                   <Badge className='text-capitalize' style={{padding:20,fontSize:15}} color={badgeColor1} rounded={0} isLight>{statusToText(currentToken.status)}</Badge>
                 </CardActions>

@@ -25,19 +25,22 @@ import strataLyApi, { devaddress } from '../../strataLaunchApi';
 
 const creationFee = 0.001
 
-// TODO: add strata token and busd
 // TODO: add fairlaunch option using get params
+// on fairlaunch create, transfer hardcap + creationFee and token to sell then set status as completed and publish too
 const possiblePairs = ['wbnb'];
 
-const LaunchPage = () => {
+const LaunchPage = (props) => {
   const { launchPadInfo, metamask } = useSelector(state => state);
   const { darkModeStatus } = useDarkMode();
-    // eslint-disable-next-line no-unused-vars
+
   const { addToast } = useToasts();
   const navigate = useNavigate();
+  const httpGetOptions = new URLSearchParams(window.location.search)
   
   const defaultForm = { tokenaddress:null, pair:possiblePairs[0].toUpperCase(), liquidityPercentage: 60 }
   const tokeninputref = createRef(null);
+  const toUsdPrice = createRef(null);
+  const isFairlaunch = httpGetOptions.get('m') === 'fairlaunch'
   
   // eslint-disable-next-line no-unused-vars
   const [form, updateForm] = useState(defaultForm)
@@ -46,13 +49,6 @@ const LaunchPage = () => {
 
   const [waitingAsync, setWaitingAsync] = useState(false);
   const [buttonStatus, setButtonStatus] = useState(true);
-
-  // eslint-disable-next-line no-unused-vars
-  const resetPresale = () => {
-    setDeployNetwork(null)
-    updateForm(defaultForm)
-    setToken(null)
-  }
 
   const notify = useCallback(
     (iconColor, message, title) => addToast(
@@ -69,7 +65,16 @@ const LaunchPage = () => {
     // check if every form field is filled before allow submit button
     if (form.amountToSell && form.hardCap && form.maxContributions && form.startDate && form.presaleEndDate && form.lockLiquidityFor) setButtonStatus(false)
     else setButtonStatus(true)
-  }, [deployTo, metamask, launchPadInfo, form, notify])
+
+    // calculate to usd price
+    if(form.bnbToAdd && form.amountToSell) {
+      const listingRate = form.amountToSell / form.bnbToAdd
+      const totalLp = form.bnbToAdd * form.amountToSell;
+      let x = (totalLp / (form.amountToSell - listingRate)) - form.bnbToAdd
+      const est_price = (x / listingRate).toFixed(2)
+      toUsdPrice.current.innerHTML = `${est_price} USD`
+    }
+  }, [deployTo, metamask, launchPadInfo, form, notify, toUsdPrice])
 
   // handle input from token address field
   const handleTokenInput = () => {
@@ -89,34 +94,33 @@ const LaunchPage = () => {
             if (status === "1") {
               _pairingToken.contractabi = result;
   
-              var contractABI = JSON.parse(result)
-              var MyContract = new web3.eth.Contract(contractABI, address);
+              var MyContract = new web3.eth.Contract(JSON.parse(result), address);
               const balance = await MyContract.methods.balanceOf(accounts[0]).call();
               let toStr = `${balance}`;
               // TODO: use token divisor
               _pairingToken.currentTokenBalance = toStr.substr(0, toStr.length - 18)
               setToken(_pairingToken)
-              setWaitingAsync(false)
+              clearAsync()
             }else {
               notify('danger', result, 'Token error');
             }
           })
         } catch (error) {
-          // TODO: remove all console logs
           notify('danger', 'Error occurred', 'Token error')
-          console.log(error);
+          clearAsync()
         }
       }
     }
   }
 
   // create presale
+  // TODO: check liquidity date before remove liquidity
   const createPresale = async () => {
     setWaitingAsync(true)
     if (metamask) {
       const isEmptyChecks = ['', ' '] // use case to check if fields are empty or not
       const mustBeIntegers = ['presaleRate', 'liquidityPercentage']
-      const expectedFields = 11
+      const expectedFields = isFairlaunch ? 6 : 11
       const errorFound = [];
       // check every single form field
       if(Object.keys(form).length === expectedFields) {
@@ -127,74 +131,66 @@ const LaunchPage = () => {
       }else errorFound.push(`fill in all fields`)
 
       if (errorFound.length === 0) {
-        // proceed 
-        const today = new Date()
-        const presaleStartDate = new Date(form.startDate)
-        const presaleEndDate = new Date(form.presaleEndDate)
-        // check if presale starts today
-        const difference = presaleStartDate.getTime() - today.getTime()
-        // increase difference to 1
-        let diff_in_days = Math.floor(difference / (1000 * 3600 * 24)) + 1
-        if (diff_in_days < 1) {
-          notify('danger', 'presale cannot start today', 'Presale error')
-          clearAsync()
-        }
-        else {
-          // check if presale start and end has a week difference
-          const difference = presaleEndDate.getTime() - presaleStartDate.getTime()
-          let diff_in_days = Math.round(difference / (1000 * 3600 * 24)) + 1
-          if (diff_in_days < 7) {
-            notify('danger', 'Presale duration must be > a week', 'Presale error')
+        if(isFairlaunch) {
+          // do fiarlaunch
+        }else {
+          // create presale regular
+          const today = new Date()
+          const presaleStartDate = new Date(form.startDate)
+          const presaleEndDate = new Date(form.presaleEndDate)
+          // check if presale starts today
+          const difference = presaleStartDate.getTime() - today.getTime()
+          // increase difference to 1
+          let diff_in_days = Math.floor(difference / (1000 * 3600 * 24)) + 1
+          if (diff_in_days < 1) {
+            notify('danger', 'presale cannot start today', 'Presale error')
             clearAsync()
           } else {
-            // eslint-disable-next-line no-unused-vars
-            const { accounts, web3 } = metamask;
-            // eslint-disable-next-line no-unused-vars
-            const amountRequired = parseInt(form.amountToSell) + parseInt(form.amountToSell * 0.09)
-            
-            // construct post object
-            const { hardCap, softCap, tokenaddress, pair, maxContributions, lockLiquidityFor, amountToSell, presaleRate, liquidityPercentage } = form;
-            const postParams = { 
-              hardCap, softCap, currentCap: 0, tokenaddress, 
-              tokenname: pairingToken.tokenName, pair, 
-              startDate: form.startDate, presaleEndDate: form.presaleEndDate, 
-              presaleCreator: accounts[0], maxContributions, lockLiquidityFor, amountToSell,
-              symbol: pairingToken.symbol, status: "0", participants: 0, presaleRate, liquidityPercentage
-            };
-
-            var contractABI = JSON.parse(pairingToken.contractabi)
-            var thisTokenContract = new web3.eth.Contract(contractABI, tokenaddress);
-
-            var rawTransaction = {
-              from: accounts[0],
-              to: devaddress,
-              value: web3.utils.toWei(`${creationFee}`, 'ether')
-            } // mainnet chainId
-
-            // TODO: test create presale
-            web3.eth.sendTransaction(rawTransaction).then(async (reciept) => {
-              if(reciept && reciept.status === true) {
-                notify('warning','Confirmed creation fee: now sending token', 'Create Presale')
-                try {
-                  await thisTokenContract.methods.transfer("0x76d96AaE20F26C40F1967aa86f96363F6907aEAB", web3.utils.toWei(`${amountRequired}`, 'ether')).send({ from: accounts[0] })
-                  // process transaction
-                  strataLyApi.createPresale(postParams).then(response => {
-                    console.log(response);
-                    notify('success', 'Presale created successfully', 'success')
-                    clearAsync()
-                  })
-                } catch (error) {
-                  notify('danger', error.message, 'Error occurred')
-                  clearAsync()
-                }
-              } else clearAsync()
-              console.log(reciept);
-            }).catch(error => {
-              notify('danger', error.message, 'Error occurred')
+            // check if presale start and end has a week difference
+            const difference = presaleEndDate.getTime() - presaleStartDate.getTime()
+            let diff_in_days = Math.round(difference / (1000 * 3600 * 24)) + 1
+            if (diff_in_days < 7) {
+              notify('danger', 'Presale duration must be > a week', 'Presale error')
               clearAsync()
-              console.log(error)
-            })
-            
+            } else {
+              const { accounts, web3 } = metamask;
+              const amountRequired = parseInt(form.amountToSell) + parseInt(form.amountToSell * 0.09)
+              
+              // construct post object
+              const { hardCap, softCap, tokenaddress, pair, maxContributions, lockLiquidityFor, amountToSell, presaleRate, liquidityPercentage } = form;
+              const postParams = { 
+                hardCap, softCap, currentCap: 0, tokenaddress, 
+                tokenname: pairingToken.tokenName, pair, 
+                startDate: form.startDate, presaleEndDate: form.presaleEndDate, 
+                presaleCreator: accounts[0], maxContributions, lockLiquidityFor, amountToSell,
+                symbol: pairingToken.symbol, status: "0", participants: 0, presaleRate, liquidityPercentage
+              };
+
+              var thisTokenContract = new web3.eth.Contract(JSON.parse(pairingToken.contractabi), tokenaddress);
+              var rawTransaction = { from: accounts[0], to: devaddress, value: web3.utils.toWei(`${creationFee}`, 'ether') }
+
+              web3.eth.sendTransaction(rawTransaction).then(async (reciept) => {
+                if(reciept && reciept.status === true) {
+                  notify('warning','Confirmed creation fee: now sending token', 'Create Presale')
+                  try {
+                    await thisTokenContract.methods.transfer("0x76d96AaE20F26C40F1967aa86f96363F6907aEAB", web3.utils.toWei(`${amountRequired}`, 'ether')).send({ from: accounts[0] })
+                    // process transaction
+                    strataLyApi.createPresale(postParams).then(response => {
+                      console.log(response);
+                      notify('success', 'Presale created successfully', 'success')
+                      clearAsync()
+                    })
+                  } catch (error) {
+                    notify('danger', error.message, 'Error occurred')
+                    clearAsync()
+                  }
+                } else clearAsync()
+              }).catch(error => {
+                notify('danger', error.message, 'Error occurred')
+                clearAsync()
+              })
+              
+            }
           }
         }
         
@@ -202,7 +198,7 @@ const LaunchPage = () => {
         errorFound.forEach(error => notify('danger', error, 'Presale error'))
         clearAsync()
       }
-    }
+    } else clearAsync()
   }
 
   return(
@@ -356,7 +352,7 @@ const LaunchPage = () => {
 
                           
                           {pairingToken ? (<>
-
+                            {/* presale creator */}
                             <div className='mt-5'>
                               <h5 className='text-muted'>Presale creator</h5>
                               <h4 className={classNames(
@@ -374,15 +370,8 @@ const LaunchPage = () => {
 
                             <div className='comp-presale-info mt-5'>
                               <h5 className='text-muted'>How many {pairingToken.tokenName} are up for presale?</h5>
-                              <div className={classNames(
-                                'p-3',
-                                'mb-5',
-                                'rounded-2',
-                                {
-                                  'bg-dark': darkModeStatus,
-                                  'bg-light': !darkModeStatus
-                                }
-                              )}>
+                              {/* token amount to sell */}
+                              <div className={classNames( 'p-3 mb-5 rounded-2', { 'bg-dark': darkModeStatus, 'bg-light': !darkModeStatus } )}>
                                 <p style={{textAlign:'right'}}>Balance: <strong>{new Intl.NumberFormat().format(pairingToken.currentTokenBalance)}</strong></p>
                                 <InputGroup>
                                   <Input 
@@ -399,190 +388,198 @@ const LaunchPage = () => {
                                 <small className='text-danger'>{ form.amountToSell && parseInt(form.amountToSell) > parseInt(pairingToken.currentTokenBalance) ? 'Insufficient funds' : null }</small>
                               </div>
 
-                              <div className='row'>
-                                <div className='col-md-6'>
-                                  <h5 className='text-center'>Soft Cap</h5>
-                                  <div className={classNames(
-                                    'p-3',
-                                    'rounded-2',
-                                    {
-                                      'bg-dark': darkModeStatus,
-                                      'bg-light': !darkModeStatus
-                                    }
-                                  )}>
-                                    <InputGroup>
-                                      <Input 
-                                        ariaLabel='Soft Cap' 
-                                        placeholder='0.0'
-                                        onChange={(event) => updateForm({ ...form, softCap: event.target.value })}
-                                        type='number' />
-                                      <InputGroupText>WBNB</InputGroupText>
-                                    </InputGroup>
-                                    <small className='text-danger'>{ form.softCap && form.softCap <= 0 ? 'Must be greater than 0' : null }</small>
+                              {/* soft cap - hard cap / BNB to add */}
+                              { isFairlaunch ? (<>
+                                <div className={classNames('p-3 mb-1 rounded-2',{ 'bg-dark': darkModeStatus, 'bg-light': !darkModeStatus })}>
+                                  <h5>Please enter the amount of BNB you will add:</h5>
+                                  <InputGroup>
+                                    <Input 
+                                      ariaLabel='BNB To Add' 
+                                      placeholder='0.0' 
+                                      type='number' 
+                                      onChange={(event) => updateForm({ ...form, bnbToAdd: event.target.value })}
+                                      aria-describedby='addon2' />
+                                    <InputGroupText id='addon2'>
+                                      {form.pair}
+                                    </InputGroupText>
+                                  </InputGroup>
+                                </div>
+
+                                { form.bnbToAdd !== 0 ? (<>
+                                  <div className='another-estimate mb-5'>
+                                    <h6 className='text-muted'>Calculated Listing Rate:  <strong className='text-secondary'>
+                                      {(form.amountToSell / form.bnbToAdd).toFixed(2)} 
+                                      {pairingToken.symbol} = 1 {form.pair}</strong>
+                                    </h6>
+                                    <h6 className='text-muted'>Estimated Starting Price: <strong ref={toUsdPrice} className='text-secondary'>0 USD</strong></h6>
+                                  </div>
+                                </>) : null }
+
+
+                              </>) : (<>
+                                <div className='row'>
+                                  <div className='col-md-6'>
+                                    <h5 className='text-center'>Soft Cap</h5>
+                                    <div className={classNames('p-3 rounded-2', { 'bg-dark': darkModeStatus, 'bg-light': !darkModeStatus })}>
+                                      <InputGroup>
+                                        <Input 
+                                          ariaLabel='Soft Cap' 
+                                          placeholder='0.0'
+                                          onChange={(event) => updateForm({ ...form, softCap: event.target.value })}
+                                          type='number' />
+                                        <InputGroupText>WBNB</InputGroupText>
+                                      </InputGroup>
+                                      <small className='text-danger'>{ form.softCap && form.softCap <= 0 ? 'Must be greater than 0' : null }</small>
+                                    </div>
+                                  </div>
+                                  <div className='col-md-6'>
+                                    <h5 className='text-center'>Hard Cap</h5>
+                                    <div className={classNames('p-3 rounded-2',{'bg-dark': darkModeStatus,'bg-light': !darkModeStatus })}>
+                                      <InputGroup>
+                                        <Input 
+                                          ariaLabel='Hard Cap' 
+                                          placeholder='0.0' 
+                                          onChange={(event) => {
+                                            // update preslae rate
+                                            // presaleRate => rate at which users buy your token
+                                            const presaleRate = form.amountToSell / event.target.value
+                                            updateForm({ ...form, hardCap: event.target.value , presaleRate: presaleRate})
+                                          }}
+                                          type='number' />
+                                        <InputGroupText>WBNB</InputGroupText>
+                                      </InputGroup>
+                                      <small className='text-danger'>{ form.hardCap && form.softCap && form.hardCap < parseInt(form.softCap) ? 'Must be >= softCap' : null }</small>
+                                    </div>
                                   </div>
                                 </div>
-                                <div className='col-md-6'>
-                                  <h5 className='text-center'>Hard Cap</h5>
-                                  <div className={classNames(
-                                    'p-3',
-                                    'rounded-2',
-                                    {
-                                      'bg-dark': darkModeStatus,
-                                      'bg-light': !darkModeStatus
-                                    }
-                                    )}>
-                                    <InputGroup>
-                                      <Input 
-                                        ariaLabel='Hard Cap' 
-                                        placeholder='0.0' 
-                                        onChange={(event) => {
-                                          // update preslae rate
-                                          // presaleRate => rate at which users buy your token
-                                          const presaleRate = form.amountToSell / event.target.value
-                                          updateForm({ ...form, hardCap: event.target.value , presaleRate: presaleRate})
-                                        }}
-                                        type='number' />
-                                      <InputGroupText>WBNB</InputGroupText>
-                                    </InputGroup>
-                                    <small className='text-danger'>{ form.hardCap && form.softCap && form.hardCap < parseInt(form.softCap) ? 'Must be >= softCap' : null }</small>
-                                  </div>
-                                </div>
-                              </div>
+                              </>) }
+                              
                             </div>
 
                             <div className='contianer text-center mt-5'>
-                              <h5>Presale Rate</h5>
-                              <h3 className='text-success mb-5'>1 {form.pair} = { form.presaleRate ? (form.presaleRate).toFixed(2) : '0' } {pairingToken.tokenName}</h3>
+                              { !isFairlaunch ? (<>
+                                <h5>Presale Rate</h5>
+                                <h3 className='text-success mb-5'>1 {form.pair} = { form.presaleRate ? (form.presaleRate).toFixed(2) : '0' } {pairingToken.tokenName}</h3>
 
-                              <h5>Listing Rate</h5>
-                              <h3 className='text-success mb-0'>1 {form.pair} = { (form.presaleRate - (form.presaleRate * 0.10)).toFixed(2) } {pairingToken.tokenName}</h3>
-                              <small>listing rate - <strong>10%</strong></small>
+                                <h5>Listing Rate</h5>
+                                <h3 className='text-success mb-0'>1 {form.pair} = { (form.presaleRate - (form.presaleRate * 0.10)).toFixed(2) } {pairingToken.tokenName}</h3>
+                                <small>listing rate - <strong>10%</strong></small>
 
-                              <div className='mt-5'>
-                                <h6>Percentage of raised WBNB used for liquidity</h6>
-                                <h2>{form.liquidityPercentage}%</h2>
-                                <div className='d-flex align-items-center justify-content-evenly'>
-                                  <Button 
+                                <div className='mt-5'>
+                                  <h6>Percentage of raised WBNB used for liquidity</h6>
+                                  <h2>{form.liquidityPercentage}%</h2>
+                                  <div className='d-flex align-items-center justify-content-evenly'>
+                                    <Button 
+                                      isLight 
+                                      onClick={() => {
+                                        let current = form.liquidityPercentage
+                                        updateForm({ 
+                                          ...form, 
+                                          liquidityPercentage: current > 60 ? current - 1 : current })
+                                      }}
+                                      isOutline 
+                                      color='primary' 
+                                      style={{borderRadius:0}}>-</Button>
+                                    <Input
+                                      style={{backgroundColor:'#f0effb',height:34}}
+                                      ariaLabel='Liquity Percentage'
+                                      type='range'
+                                      value={form.liquidityPercentage}
+                                      min={60}
+                                      max={90}
+                                      onChange={(event)=>updateForm({ ...form, liquidityPercentage: event.target.value })}
+                                      />
+                                    <Button 
                                     isLight 
+                                    isOutline
                                     onClick={() => {
                                       let current = form.liquidityPercentage
                                       updateForm({ 
                                         ...form, 
-                                        liquidityPercentage: current > 60 ? current - 1 : current })
+                                        liquidityPercentage: current < 90 ? current + 1 : current })
                                     }}
-                                    isOutline 
                                     color='primary' 
-                                    style={{borderRadius:0}}>-</Button>
-                                  <Input
-                                    style={{backgroundColor:'#f0effb',height:34}}
-                                    ariaLabel='Liquity Percentage'
-                                    type='range'
-                                    value={form.liquidityPercentage}
-                                    min={60}
-                                    max={90}
-                                    onChange={(event)=>updateForm({ ...form, liquidityPercentage: event.target.value })}
-                                    />
-                                  <Button 
-                                  isLight 
-                                  isOutline
-                                  onClick={() => {
-                                    let current = form.liquidityPercentage
-                                    updateForm({ 
-                                      ...form, 
-                                      liquidityPercentage: current < 90 ? current + 1 : current })
-                                  }}
-                                  color='primary' 
-                                  style={{borderRadius:0}}>+</Button>
+                                    style={{borderRadius:0}}>+</Button>
+                                  </div>
                                 </div>
-                              </div>
 
-                              <div className='mt-5'>
-                                <h5>Presale Prediction</h5>
-                                <h5><u>{form.pair}</u></h5>
-                                <ul style={{textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between',listStyle:'none',overflow:'hidden'}}>
-                                  <li>
-                                    <strong className='text-muted'>{process.env.REACT_SITE_APP_NAME} Fee: </strong> 
-                                    <h5>{ ((form.hardCap * `0.${form.liquidityPercentage}`) * 0.02).toFixed(2) } {form.pair}</h5>
-                                  </li>
-                                  <li>
-                                    <strong className='text-muted'>WBNB Liquidity: </strong> 
-                                    <h5>{ ((form.hardCap * `0.${form.liquidityPercentage}`) - ((form.hardCap * `0.${form.liquidityPercentage}`) * 0.02)).toFixed(2) } {form.pair}</h5>
-                                  </li>
-                                  <li>
-                                    <strong className='text-muted'>Your WBNB: </strong> 
-                                    <h5>{ (form.hardCap - (form.hardCap * `0.${form.liquidityPercentage}`)).toFixed(2) } {form.pair}</h5>
-                                  </li>
-                                </ul>
+                                <div className='mt-5'>
+                                  <h5>Presale Prediction</h5>
+                                  <h5><u>{form.pair}</u></h5>
+                                  <ul style={{textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between',listStyle:'none',overflow:'hidden'}}>
+                                    <li>
+                                      <strong className='text-muted'>{process.env.REACT_SITE_APP_NAME} Fee: </strong> 
+                                      <h5>{ ((form.hardCap * `0.${form.liquidityPercentage}`) * 0.02).toFixed(2) } {form.pair}</h5>
+                                    </li>
+                                    <li>
+                                      <strong className='text-muted'>WBNB Liquidity: </strong> 
+                                      <h5>{ ((form.hardCap * `0.${form.liquidityPercentage}`) - ((form.hardCap * `0.${form.liquidityPercentage}`) * 0.02)).toFixed(2) } {form.pair}</h5>
+                                    </li>
+                                    <li>
+                                      <strong className='text-muted'>Your WBNB: </strong> 
+                                      <h5>{ (form.hardCap - (form.hardCap * `0.${form.liquidityPercentage}`)).toFixed(2) } {form.pair}</h5>
+                                    </li>
+                                  </ul>
 
-                                {/* pairingToken presale prediction */}
-                                <h5><u>{pairingToken.tokenName}</u></h5>
-                                <ul style={{textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between',listStyle:'none',overflow:'hidden'}}>
-                                  <li>
-                                    <strong className='text-muted'>{process.env.REACT_SITE_APP_NAME} Fee: </strong> 
-                                    <h5>{ ((form.amountToSell * `0.${form.liquidityPercentage}`) * 0.02).toFixed(2) } {pairingToken.symbol}</h5>
-                                  </li>
-                                  <li>
-                                    <strong className='text-muted'>Strata Liquidity: </strong> 
-                                    <h5>{ ((form.amountToSell * `0.${form.liquidityPercentage}`) - ((form.amountToSell * `0.${form.liquidityPercentage}`) * 0.02)).toFixed(2) } {pairingToken.symbol}</h5>
-                                  </li>
-                                  <li>
-                                    <strong className='text-muted'>Strata Sold: </strong> 
-                                    <h5>{form.amountToSell} {pairingToken.symbol}</h5>
-                                  </li>
-                                </ul>
-                              </div>
+                                  {/* pairingToken presale prediction */}
+                                  <h5><u>{pairingToken.tokenName}</u></h5>
+                                  <ul style={{textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between',listStyle:'none',overflow:'hidden'}}>
+                                    <li>
+                                      <strong className='text-muted'>{process.env.REACT_SITE_APP_NAME} Fee: </strong> 
+                                      <h5>{ ((form.amountToSell * `0.${form.liquidityPercentage}`) * 0.02).toFixed(2) } {pairingToken.symbol}</h5>
+                                    </li>
+                                    <li>
+                                      <strong className='text-muted'>Strata Liquidity: </strong> 
+                                      <h5>{ ((form.amountToSell * `0.${form.liquidityPercentage}`) - ((form.amountToSell * `0.${form.liquidityPercentage}`) * 0.02)).toFixed(2) } {pairingToken.symbol}</h5>
+                                    </li>
+                                    <li>
+                                      <strong className='text-muted'>Strata Sold: </strong> 
+                                      <h5>{form.amountToSell} {pairingToken.symbol}</h5>
+                                    </li>
+                                  </ul>
+                                </div>
 
-                              <div className='mt-5'>
-                                <h5>Max Contributions</h5>
-                                <p>Max contribution limits per user</p>
-                                <div className={classNames('p-3','rounded-2',{
-                                  'bg-dark': darkModeStatus,
-                                  'bg-light': !darkModeStatus
-                                })}>
-                                <InputGroup>
-                                  <Input 
-                                    type='number'
-                                    ariaLabel='Max Contributions' 
-                                    onChange={(event) => updateForm({ ...form, maxContributions: event.target.value })}
-                                    placeholder='0.0' />
-                                  <InputGroupText>{form.pair}</InputGroupText>
-                                </InputGroup>
-                              </div>
-                              </div>
-
-                              <div className='mt-5 row'>
-                                <div className='col-md-6'>
-                                  <div className={classNames(
-                                  'p-3',
-                                  'rounded-2',
-                                  {
+                                <div className='mt-5'>
+                                  <h5>Max Contributions</h5>
+                                  <p>Max contribution limits per user</p>
+                                  <div className={classNames('p-3','rounded-2',{
                                     'bg-dark': darkModeStatus,
                                     'bg-light': !darkModeStatus
-                                  }
-                                )}>
-                                  <h5>Presale start date</h5>
-                                  <Input 
-                                    ariaLabel='Start Date' 
-                                    onChange={(event) => updateForm({ ...form, startDate: event.target.value })}
-                                    type='date' />
+                                  })}>
+                                  <InputGroup>
+                                    <Input 
+                                      type='number'
+                                      ariaLabel='Max Contributions' 
+                                      onChange={(event) => updateForm({ ...form, maxContributions: event.target.value })}
+                                      placeholder='0.0' />
+                                    <InputGroupText>{form.pair}</InputGroupText>
+                                  </InputGroup>
                                 </div>
                                 </div>
-                                <div className='col-md-6'>
-                                  <div className={classNames(
-                                    'p-3',
-                                    'rounded-2',
-                                    {
-                                      'bg-dark': darkModeStatus,
-                                      'bg-light': !darkModeStatus
-                                    }
-                                  )}>
-                                  <h5>Presale end date</h5>
-                                  <Input 
-                                    ariaLabel='End Date' 
-                                    onChange={(event) => updateForm({ ...form, presaleEndDate: event.target.value })}
-                                    type='date' />
+                              </>) : null }
+
+                              <div className='mt-5 row'>
+                                <div className={classNames({'col-md-6':!isFairlaunch, 'col-md-12':isFairlaunch})}>
+                                  <div className={classNames('p-3 rounded-2',{'bg-dark': darkModeStatus,'bg-light': !darkModeStatus})}>
+                                    <h5>Presale start date</h5>
+                                    <Input 
+                                      ariaLabel='Start Date' 
+                                      onChange={(event) => updateForm({ ...form, startDate: event.target.value })}
+                                      type='date' />
+                                  </div>
                                 </div>
-                                </div>
+
+                                { !isFairlaunch ? (<>
+                                  <div className='col-md-6'>
+                                    <div className={classNames('p-3 rounded-2',{'bg-dark': darkModeStatus,'bg-light': !darkModeStatus})}>
+                                      <h5>Presale end date</h5>
+                                      <Input 
+                                        ariaLabel='End Date' 
+                                        onChange={(event) => updateForm({ ...form, presaleEndDate: event.target.value })}
+                                        type='date' />
+                                    </div>
+                                  </div>
+                                </>) : null }
                               </div>
 
                               <div className='mt-5'>
@@ -593,8 +590,8 @@ const LaunchPage = () => {
                                 })}>
                                   <Select onChange={(event) => updateForm({ ...form, lockLiquidityFor: event.target.value })} ariaLabel='LiquityPeriod'>
                                     <Option value="">Select an option</Option>
-                                    <Option value='1 year'>1 year</Option>
-                                    <Option value='1 month'>1 month</Option>
+                                    <Option value='365'>1 year</Option>
+                                    <Option value='30'>1 month</Option>
                                   </Select>
                                 </div>
                               </div>

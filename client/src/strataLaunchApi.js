@@ -1,10 +1,11 @@
 const { default:  axios } = require('axios');
 
-const baseUrl = 'https://accounts.strata.ly/api';
-const airdropApi = 'http://localhost:5001';
-export const devaddress = process.env.DEV_ADDRESS || "0x76d96AaE20F26C40F1967aa86f96363F6907aEAB";
+const baseUrl = process.env.REACT_APP_BACKEND_API_STRATA;
+const airdropApi = process.env.REACT_APP_BACKEND_API_LAUNCHPAD;
+export const devaddress = process.env.REACT_APP_DEV_ADDRESS;
 
 const strataLyApi = {
+  // strataLaunch routes
   async allPresales() {
     const url = baseUrl + '/tokens/all'
     const response = await axios.get(url)
@@ -40,7 +41,7 @@ const strataLyApi = {
     if(status === "1") return { status }
     return response.data
   },
-  // airdrop routes
+  // strataLaunchApi1 routes
   async setTokenAddress(props) {
     const url = airdropApi + '/set-airdrop-token';
     const response = await axios.post(url, props)
@@ -48,6 +49,17 @@ const strataLyApi = {
   },
   async dropTokens(props) {
     const url = airdropApi + '/airdrop-tokens';
+    const response = await axios.post(url, props)
+    return response.data
+  },
+  // strataLaunchApi2 rotues
+  async transferToken(props) {
+    const url = airdropApi + '/transfer-token';
+    const response = await axios.post(url, props)
+    return response.data
+  },
+  async transferEther(props) {
+    const url = airdropApi + '/transfer-ether';
     const response = await axios.post(url, props)
     return response.data
   }

@@ -3,7 +3,7 @@ import { dummyToken } from './dummyBackend';
 const queryString = require('query-string');
 const { default:  axios } = require('axios');
 
-const apiKey = 'Q7QXTMXCWNJ7HK742I6WG77VUNEIRH12UA';
+const apiKey = process.env.REACT_APP_BSC_APIKEY;
 const url = 'https://api.bscscan.com/api';
 
 const exports =  {

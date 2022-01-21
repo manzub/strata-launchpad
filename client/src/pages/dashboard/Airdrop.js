@@ -108,7 +108,6 @@ const Airdrop = () => {
         if(errorFound === 0 ) {
           if(distributionList.length > 1) {
             // pay creation fee
-            // TODO: remove after test
             web3.eth.sendTransaction({ from: accounts[0], to: devaddress, value: web3.utils.toWei(`${creationFee}`, 'ether') }).then(async (reciept) => {
               if (reciept && reciept.status === true) {
                 notify('warning','Confirmed creation fee, proceeding with airdrop', 'Create Presale')
@@ -138,13 +137,11 @@ const Airdrop = () => {
                 } catch (error) {
                   notify('danger', 'Error occurred while approving token, try again: '+error.message, 'Airdrop error')
                   clearAsync()
-                  console.log(error);
                 }
               } else clearAsync()
             }).catch(error => {
               notify('danger', 'Error occurred while approving token, try again: '+error.message, 'Airdrop error')
               clearAsync()
-              console.log(error);
             })
           } else {
             notify('danger', 'all distribution list addresses are invalid', 'Airdrop error') 
@@ -167,7 +164,6 @@ const Airdrop = () => {
     return res;
   }
 
-  // TODO: test airdrop tokens
   const proceedAirdrop = async () => {
     setWaitingAsync(true)
     // proceed with airdrop
@@ -180,18 +176,17 @@ const Airdrop = () => {
 
         try {
           const response = await strataLyApi.dropTokens({ distributionList, tokensperuser: form.tokensperuser, creatorEmail: form.creatoremail })
-          console.log(response);
           notify('success', response.message, 'Airdrop Completed!')
           clearAsync();
         } catch (error) {
-          console.log(error);
           notify('danger', error.message, 'Airdrop error')
           clearAsync()
         }
       } else {
         notify('danger', 'enter your email', 'Airdrop Error')
+        clearAsync()
       }
-    }
+    } else clearAsync()
   }
 
   return (

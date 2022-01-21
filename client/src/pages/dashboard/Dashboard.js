@@ -93,7 +93,7 @@ const Dashboard = () => {
                     {/* <div style={{height:20}} /> */}
                     <h3>Strata<strong>FairLaunch</strong></h3>
                     <p>Launch Your Project With Self Provided Liquidity!</p>
-                    <Button size='sm' isLight rounded={0} color='primary' isOutline>Get Started</Button>
+                    <Button onClick={() => navigate('dashboard/launchpad?m=fairlaunch')} size='sm' isLight rounded={0} color='primary' isOutline>Get Started</Button>
                   </CardBody>
                 </Card>
               </div>

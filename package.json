@@ -16,9 +16,12 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.4.2",
     "@truffle/hdwallet-provider": "^2.0.0",
+    "axios": "^0.25.0",
     "cors": "^2.8.5",
     "dotenv": "^14.1.0",
     "express": "^4.17.2",
+    "fs": "^0.0.1-security",
+    "nodemailer": "^6.7.2",
     "web3": "^1.7.0"
   },
   "devDependencies": {

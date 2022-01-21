@@ -1,12 +1,16 @@
 require('dotenv').config();
+const fs = require('fs');
 const Web3 = require('web3');
 const Provider = require('@truffle/hdwallet-provider');
 const MyContract = require("../client/src/contracts/Airdrop.json");
+const nodemailer = require('nodemailer');
+const { default:  axios } = require('axios');
 
 const express = require('express');
 const cors = require('cors');
 const app = express()
 
+const mailer = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS } })
 const providerOrUrl = 'https://bsc-dataseed.binance.org/';
 // create web3 instance
 let provider = new Provider({ mnemonic: { phrase: process.env.MAINNET_MNEMONIC }, providerOrUrl });
@@ -20,7 +24,86 @@ app.use(express.json({ limit: "50mb" }));
 // Add headers before the routes are defined
 app.use(cors())
 
-app.post('/set-airdrop-token', async function(req, res) {
+// TODO: debug logger middleware
+function statusLogger(status = 1, message) {
+  try {
+    if (fs.readFileSync('./server/status.log')) {
+      if (status == 2) {
+        fs.appendFileSync('./server/status.log', `Request Options: ${message.protocol}:/${message.method} - ${message.originalUrl}\n`)
+      } else {
+        fs.appendFileSync('./server/status.log', `Status Code: ${status}, Message: ${message}\n`)
+      }
+    }
+  } catch (error) {
+    console.log(error.message);
+  }
+}
+
+function middleware(req, res, next) {
+  statusLogger(2, req)
+  next();
+}
+
+
+// ========== ACCOUNT ROUTES =============
+app.post('/transfer-token', middleware, async function(req, res) {
+  // TODO: transfer token and transfer ether
+  const accounts = await web3.eth.getAccounts();
+  const { transferTo, amount, tokenaddress, apiKey } = req.body;
+
+  if(!(transferTo && amount && tokenaddress, apiKey)) {
+    res.status(400).json({ status: 0, message: 'Incomplete request' })
+  }
+  try {
+    const response = await axios.get(`https://api.bscscan.com/api?module=contract&action=getabi&address=${tokenaddress}&apikey=${apiKey}`)
+    const { data } = response
+    var contractABI = "";
+    contractABI = JSON.parse(data.result);
+    if (contractABI != '') {
+      var thisTokenContract = new web3.eth.Contract(contractABI, tokenaddress);
+      await thisTokenContract.methods.transfer(transferTo, web3.utils.toWei(`${amount}`, 'ether')).send({ from: accounts[0] })
+      statusLogger(1, 'Claimed tokens')
+      res.status(200).json({ status: 0, message: 'Claimed Tokens' })
+    } else {
+      let message = 'Error: could\' get contract abi';
+      statusLogger(0, message)
+      res.status(400).json({ status: 0, message })
+    }
+  } catch(error) {
+    statusLogger(0, error.message)
+    res.status(400).json({ status: 0, message: error.message })
+  }
+})
+
+app.post('/transfer-ether', middleware, async function(req, res) {
+  // TODO: transfer token and transfer ether
+  const accounts = await web3.eth.getAccounts();
+  const { transferTo, amount } = req.body;
+
+  if(!(transferTo && amount)) {
+    res.status(400).json({ status: 0, message: 'Incomplete request' })
+  }
+
+  let amountToSend = amount - ( amount * 0.05 )
+  const rawTransaction = { from: accounts[0], to: transferTo, value: web3.utils.toWei(`${amountToSend}`, 'ether') }
+  web3.eth.sendTransaction(rawTransaction).then((result) => {
+    if(reciept && reciept.status === true) {
+      res.send(200).json({ status: 1, message: 'Refunded '+ amountToSend })
+    }else {
+      statusLogger(0, reciept.toString())
+      res.status(400).json({ status: 0, message: 'An error occurred, try again later' })
+    }
+  }).catch((error) => {
+    statusLogger(0, error.message)
+    res.status(400).json({ status: 0, message: error.message })
+  });
+})
+// ========== END ACCOUNT ROUTES =============
+
+
+
+// =========== AIRDROP ROUTES =============
+app.post('/set-airdrop-token', middleware, async function(req, res) {
   let accounts = await web3.eth.getAccounts();
   const { tokenaddress } = req.body;
 
@@ -33,17 +116,15 @@ app.post('/set-airdrop-token', async function(req, res) {
     console.log(r);
     res.status(200).json({ status: 1, message: 'approved!' })
   } catch (error) {
-    console.log(error);
+    statusLogger(0, error.message)
     res.status(400).send(error.message)
   }
 })
 
-app.post('/airdrop-tokens', async function(req, res, next) {
+app.post('/airdrop-tokens', middleware, async function(req, res) {
   let accounts = await web3.eth.getAccounts();
   const { distributionList, tokensperuser, creatorEmail } = req.body;
-  // TODO: set a filter array, every successful airdrop, add to the filter array
-  // after completion if the addresses is not in filter array, start airdrop again,
-  // else email user about the error and possible retry
+
   let completedList = [];
   let uncompletedList = [];
   console.log('From airdrop: ', await AirdropContract.methods.owner().call());
@@ -56,22 +137,33 @@ app.post('/airdrop-tokens', async function(req, res, next) {
       completedList.push(...element);
       console.log('------------------------');
       console.log("Allocation + transfer was successful.", r.gasUsed, "gas used. Spent: ", r.gasUsed * gasPrice, "wei");
+      console.log('----------DONE----------');
       break;
     } catch (error) {
-      console.log(error);
+      statusLogger(0, error.message)
     }
   }
   
   // check completed or not
   distributionList.forEach(x => uncompletedList.push(...x.filter(item => !completedList.includes(item))))
+  const mailOptions = { from: process.env.GMAIL_USER, to: creatorEmail, subject: 'Airdrop status from StrataLaunch' };
   if (uncompletedList.length > 0) {
     // send email with failed addresess and the status
+    mailer.sendMail({ ...mailOptions, text: 'Airdrop for: '+uncompletedList.join() + 'failed! - Reason: insufficient allowance or Invalid addresses, try again with those addresses' }, (err, info) => {
+      if(err) statusLogger(0, err.message)
+      else statusLogger(1, 'Mail sent: '+info.response.toString())
+    })
   } else {
     // send email that airdrop was success
+    mailer.sendMail({ ...mailOptions, text: 'Airdrop for '+completedList.length + 'addresses completed successfully' }, (err, info) => {
+      if(err) statusLogger(0, err.message)
+      else statusLogger(1, 'Mail sent: '+info.response.toString())
+    })
   }
 
   res.status(200).json({ status: 1, message: 'Dropping Tokens!' })
 })
+// =========== END AIRDROP ROUTES =============
 
 // default route
 app.use("*", (req, res) => {
