@@ -131,22 +131,21 @@ const LaunchPage = (props) => {
       }else errorFound.push(`fill in all fields`)
 
       if (errorFound.length === 0) {
-        if(isFairlaunch) {
-          // do fiarlaunch
-        }else {
-          // create presale regular
-          const today = new Date()
-          const presaleStartDate = new Date(form.startDate)
-          const presaleEndDate = new Date(form.presaleEndDate)
-          // check if presale starts today
-          const difference = presaleStartDate.getTime() - today.getTime()
-          // increase difference to 1
-          let diff_in_days = Math.floor(difference / (1000 * 3600 * 24)) + 1
-          if (diff_in_days < 1) {
-            notify('danger', 'presale cannot start today', 'Presale error')
-            clearAsync()
+        const today = new Date()
+        const presaleStartDate = new Date(form.startDate)
+        // check if presale starts today
+        const difference = presaleStartDate.getTime() - today.getTime()
+        // increase difference to 1
+        let diff_in_days = Math.floor(difference / (1000 * 3600 * 24)) + 1
+        if (diff_in_days < 1) {
+          notify('danger', 'presale cannot start today', 'Presale error')
+          clearAsync()
+        } else {
+          if(isFairlaunch) {
+            // do fairlaunch
           } else {
             // check if presale start and end has a week difference
+            const presaleEndDate = new Date(form.presaleEndDate)
             const difference = presaleEndDate.getTime() - presaleStartDate.getTime()
             let diff_in_days = Math.round(difference / (1000 * 3600 * 24)) + 1
             if (diff_in_days < 7) {
