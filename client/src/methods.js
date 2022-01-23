@@ -6,7 +6,7 @@ export function hideAddress(account) {
 }
 
 export function dateToString(date, type = 1) {
-  const dateObj = new Date(date);
+  const dateObj = date === null ? new Date() : new Date(date);
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const month = dateObj.getMonth();
   const day = String(dateObj.getDate()).padStart(2, '0');

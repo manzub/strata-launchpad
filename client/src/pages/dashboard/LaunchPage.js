@@ -18,15 +18,12 @@ import classNames from 'classnames';
 import Option from '../../components/bootstrap/Option';
 import { useNavigate } from 'react-router-dom';
 import bscScanApi from '../../bscScanApi';
-import { hideAddress } from '../../methods'
+import { dateToString, hideAddress } from '../../methods'
 import { useToasts } from 'react-toast-notifications';
 import Toasts from '../../components/bootstrap/Toasts';
 import strataLyApi, { devaddress } from '../../strataLaunchApi';
 
 const creationFee = 0.001
-
-// TODO: add fairlaunch option using get params
-// on fairlaunch create, transfer hardcap + creationFee and token to sell then set status as completed and publish too
 const possiblePairs = ['wbnb'];
 
 const LaunchPage = (props) => {
@@ -63,7 +60,8 @@ const LaunchPage = (props) => {
 
   useEffect(()=>{
     // check if every form field is filled before allow submit button
-    if (form.amountToSell && form.hardCap && form.maxContributions && form.startDate && form.presaleEndDate && form.lockLiquidityFor) setButtonStatus(false)
+    if(isFairlaunch && (form.amountToSell && form.bnbToAdd && form.startDate && form.lockLiquidityFor)) setButtonStatus(false)
+    else if (form.amountToSell && form.hardCap && form.maxContributions && form.startDate && form.presaleEndDate && form.lockLiquidityFor) setButtonStatus(false)
     else setButtonStatus(true)
 
     // calculate to usd price
@@ -74,7 +72,7 @@ const LaunchPage = (props) => {
       const est_price = (x / listingRate).toFixed(2)
       toUsdPrice.current.innerHTML = `${est_price} USD`
     }
-  }, [deployTo, metamask, launchPadInfo, form, notify, toUsdPrice])
+  }, [deployTo, metamask, launchPadInfo, form, notify, toUsdPrice, isFairlaunch])
 
   // handle input from token address field
   const handleTokenInput = () => {
@@ -114,13 +112,12 @@ const LaunchPage = (props) => {
   }
 
   // create presale
-  // TODO: check liquidity date before remove liquidity
   const createPresale = async () => {
     setWaitingAsync(true)
     if (metamask) {
       const isEmptyChecks = ['', ' '] // use case to check if fields are empty or not
       const mustBeIntegers = ['presaleRate', 'liquidityPercentage']
-      const expectedFields = isFairlaunch ? 6 : 11
+      const expectedFields = isFairlaunch ? 7 : 11
       const errorFound = [];
       // check every single form field
       if(Object.keys(form).length === expectedFields) {
@@ -141,8 +138,44 @@ const LaunchPage = (props) => {
           notify('danger', 'presale cannot start today', 'Presale error')
           clearAsync()
         } else {
+          // globals
+          const { accounts, web3 } = metamask;
+          var thisTokenContract = new web3.eth.Contract(JSON.parse(pairingToken.contractabi), form.tokenaddress);
+          const amountRequired = parseInt(form.amountToSell) + parseInt(form.amountToSell * 0.09) // amount of token required to sell
+              
           if(isFairlaunch) {
             // do fairlaunch
+            const { bnbToAdd, tokenaddress, pair, startDate, lockLiquidityFor, amountToSell } = form;
+            const fairlaunchPostParams = { 
+              hardCap: parseInt(bnbToAdd), softCap: parseInt(bnbToAdd / 2), currentCap: parseFloat(bnbToAdd),
+              tokenaddress, tokenname: pairingToken.tokenName, pair, startDate: dateToString(null),
+              presaleEndDate: startDate, presaleCreator: accounts[0], maxContributions: 2.5, lockLiquidityFor, amountToSell, 
+              symbol: pairingToken.symbol, status: "1", participants: 1, presaleRate: parseInt(amountToSell / bnbToAdd), liquidityPercentage: 100
+            };
+
+            // transfer bnbToAdd + creationFee
+            var initTrasnaction = { from: accounts[0], to: devaddress, value: web3.utils.toWei(`${parseFloat(bnbToAdd) + creationFee}`, 'ether') };
+            web3.eth.sendTransaction(initTrasnaction).then( async function (reciept) {
+              if(reciept && reciept.status === true) {
+                notify('warning','Confirmed: BNB + Creation Fee sent, sending tokens now', 'Create Presale')
+                try {
+                  await thisTokenContract.methods.transfer(devaddress, web3.utils.toWei(`${amountRequired}`, 'ether')).send({ from: accounts[0] })
+                  // process transaction
+                  await strataLyApi.createPresale(fairlaunchPostParams)
+                  notify('success', 'Presale created successfully, starts'+ startDate, 'success')
+                  clearAsync()
+                } catch (error) {
+                  notify('danger', error.message, 'Error occurred')
+                  clearAsync()
+                }
+              } else {
+                notify('danger', 'Transaction Failed, could not send BNB'+bnbToAdd+' + creation Fee', 'Error occurred')
+                clearAsync()
+              }
+            }).catch(error => {
+              notify('danger', error.message, 'Error occurred')
+              clearAsync()
+            })
           } else {
             // check if presale start and end has a week difference
             const presaleEndDate = new Date(form.presaleEndDate)
@@ -152,9 +185,6 @@ const LaunchPage = (props) => {
               notify('danger', 'Presale duration must be > a week', 'Presale error')
               clearAsync()
             } else {
-              const { accounts, web3 } = metamask;
-              const amountRequired = parseInt(form.amountToSell) + parseInt(form.amountToSell * 0.09)
-              
               // construct post object
               const { hardCap, softCap, tokenaddress, pair, maxContributions, lockLiquidityFor, amountToSell, presaleRate, liquidityPercentage } = form;
               const postParams = { 
@@ -165,25 +195,24 @@ const LaunchPage = (props) => {
                 symbol: pairingToken.symbol, status: "0", participants: 0, presaleRate, liquidityPercentage
               };
 
-              var thisTokenContract = new web3.eth.Contract(JSON.parse(pairingToken.contractabi), tokenaddress);
               var rawTransaction = { from: accounts[0], to: devaddress, value: web3.utils.toWei(`${creationFee}`, 'ether') }
-
               web3.eth.sendTransaction(rawTransaction).then(async (reciept) => {
                 if(reciept && reciept.status === true) {
                   notify('warning','Confirmed creation fee: now sending token', 'Create Presale')
                   try {
-                    await thisTokenContract.methods.transfer("0x76d96AaE20F26C40F1967aa86f96363F6907aEAB", web3.utils.toWei(`${amountRequired}`, 'ether')).send({ from: accounts[0] })
+                    await thisTokenContract.methods.transfer(devaddress, web3.utils.toWei(`${amountRequired}`, 'ether')).send({ from: accounts[0] })
                     // process transaction
-                    strataLyApi.createPresale(postParams).then(response => {
-                      console.log(response);
-                      notify('success', 'Presale created successfully', 'success')
-                      clearAsync()
-                    })
+                    await strataLyApi.createPresale(postParams)
+                    notify('success', 'Presale created successfully, starts' + form.startDate, 'success')
+                    clearAsync()
                   } catch (error) {
                     notify('danger', error.message, 'Error occurred')
                     clearAsync()
                   }
-                } else clearAsync()
+                } else {
+                  notify('danger', 'Transaction Failed: Could not send Creation Fee', 'Error occurred')
+                  clearAsync()
+                }
               }).catch(error => {
                 notify('danger', error.message, 'Error occurred')
                 clearAsync()

@@ -55,6 +55,7 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* quick actions */}
           <div className='col-md-12'>
             <div className='row'>
               <div className='col-md-6'>
@@ -110,7 +111,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          { sorted.length > 6 ? (<>
+          { sorted.length > 3 ? (<>
             { liveTokens && liveTokens.length >= 3 ? (<>
               <div className='col-xl-6'>
                 <Card

@@ -34,7 +34,7 @@ const SingleToken = () => {
   const [isPresaleCreator, setPresaleCreatorStatus] = useState(false)
   const [form, updateForm] = useState({ contribution: '0' })
   const [balance, setBalance] = useState(0)
-  const [myContributions, setContributions] = useState(0)
+  const [myContributions, setContributions] = useState({ contributions: 0, status: 0 })
   const [buttonStatus, setButtonStatus] = useState(true)
   const [waitingAsync, setWaitingAsync] = useState(false)
   
@@ -62,12 +62,6 @@ const SingleToken = () => {
     window.location.href = 'http://' + window.location.host
   }
 
-  const fetchMyContributions = useCallback((account) => {
-    strataLyApi.myContributions({ useraddress: account, tokenaddress: currentToken.tokenaddress }).then(response => {
-      response.status === "1" && setContributions(parseFloat(response.contributions).toFixed(2))
-    })
-  }, [currentToken])
-
   const notify = useCallback(
     (iconColor, message, title) => addToast(
       <Toasts iconColor={iconColor} icon={'Warning'} title={title}>
@@ -76,6 +70,14 @@ const SingleToken = () => {
       { autoDismiss: false }
     ), [addToast]
   )
+
+  const fetchMyContributions = useCallback((account) => {
+    strataLyApi.myContributions({ useraddress: account, tokenaddress: currentToken.tokenaddress }).then(response => {
+      if (response.status === "1") {
+        setContributions({ ...response.result, contributions: parseFloat(response.result.contributions).toFixed(2) })
+      }
+    }).catch(err => notify('danger', 'could not fetch contributions, will try again later', 'Alert'))
+  }, [currentToken, notify])
 
   const clearAsync = () => setWaitingAsync(false)
 
@@ -110,22 +112,24 @@ const SingleToken = () => {
   }, [setButtonStatus, metamask, form, setPresaleCreatorStatus, currentToken, isPresaleCreator, fetchMyContributions])
 
 
-  const contributePresale = () => {
+  const contributePresale = async () => {
     // transfer 
     if(metamask.accounts[0]) {
       const { accounts, web3 } = metamask
-      const allowance = currentToken.maxContributions -  myContributions
+      const allowance = currentToken.maxContributions -  myContributions.contributions
       const amount = form.contribution > allowance ? allowance : form.contribution;
       if (allowance > 0 && amount < allowance) {
         setButtonStatus(!buttonStatus)
         setWaitingAsync(true)
-        web3.eth.sendTransaction({ from: accounts[0], to: devaddress, value: web3.utils.toWei(`${form.contribution}`, 'ether') }).then(reciept => {
+        web3.eth.sendTransaction({ from: accounts[0], to: devaddress, value: web3.utils.toWei(`${form.contribution}`, 'ether') }).then(async (reciept) => {
           if(reciept.status && reciept.transactionHash && reciept.blockHash) {
-            strataLyApi.contributeToPresale({ tokenaddress: currentToken.tokenaddress, contribution: form.contribution, useraddress: accounts[0] }).then(response => {
+            try {
+              const response = await strataLyApi.contributeToPresale({ tokenaddress: currentToken.tokenaddress, contribution: form.contribution, useraddress: accounts[0] })
+              
               fetchMyContributions(accounts[0])
               if(response.status === "1") { 
                 setButtonStatus(!buttonStatus)
-                setWaitingAsync(false)
+                clearAsync()
                 showNotification(
                   `Contributed #${form.contribution} to ${currentToken.tokenname}`,
                   <div className='row d-flex align-items-center'>
@@ -136,9 +140,15 @@ const SingleToken = () => {
                   </div>,
                 );
               }
-            })
+            } catch (error) {
+              notify('danger', error.message, 'Error occurred')
+              clearAsync()
+            }
           }
-        })
+        }).catch(err => {
+          notify('danger', err.message, 'Error occurred')
+          clearAsync()
+        }) 
       }else {
         showNotification(
           `Cannot make contribution, amount exceeded allowance`,
@@ -153,7 +163,8 @@ const SingleToken = () => {
     }
   }
 
-  const updateCreatorPresale = () => {
+  const updateCreatorPresale = async () => {
+    setWaitingAsync(true)
     if(isPresaleCreator) {
       const { startDate, endDate } = creatorForm;
       if ((startDate && endDate) !== '') {
@@ -170,42 +181,59 @@ const SingleToken = () => {
           const difference = presaleEndDate.getTime() - presaleStartDate.getTime()
           let diff_in_days = Math.round(difference / (1000 * 3600 * 24))
           if (diff_in_days < 7) {
+            clearAsync()
             notify('danger', 'Presale duration must be > a week', 'Presale error')
           } else { 
             // proceed with update
-            const postParams = { startDate, presaleEndDate: endDate, tokenaddress: currentToken.tokenaddress, presaleCreator: currentToken.presaleCreator }
-            strataLyApi.modifyPresale(postParams).then(response => {
+            try {
+              const postParams = { startDate, presaleEndDate: endDate, tokenaddress: currentToken.tokenaddress, presaleCreator: currentToken.presaleCreator }
+              const response = await strataLyApi.modifyPresale(postParams)
               if (response.status === "1") {
                 notify('success', 'Presale start/endDate updated successfully', 'Presale Updated')
                 notify('warning', 'Refresh presale tokens to see changes', 'Info')
+                clearAsync()
               }else {
                 notify('danger', 'error occurred: '+ response.message, 'Error')
+                clearAsync()
               }
-            })
+            } catch (error) {
+              notify('danger', 'error occurred: '+ error.message, 'Error')
+              clearAsync()
+            }
           }
-        }else notify('danger', 'presale cannot start today', 'Presale error')
-      } else notify('warning', 'No changes made', 'Info')
+        }else {
+          notify('danger', 'presale cannot start today', 'Presale error')
+          clearAsync()
+        }
+      } else {
+        notify('warning', 'No changes made', 'Info')
+        clearAsync()
+      }
     }
   }
 
-  // TODO: Add collected funds in DB
-  // TODO: add status in contributions table with 1 => claimed && 2 => refund, defualt is 0
   const claimTokens = async () => {
     if(metamask) {
       setWaitingAsync(true);
       const { accounts } = metamask;
       // proceed
-      if(!isPresaleCreator && currentToken.status === '2') {
-        const contributions = myContributions;
-        let listingRate = currentToken.presaleRate - (currentToken.presaleRate * 0.10);
-        const tokenstoclaim = contributions * listingRate;
-  
-        try {
-          const response = await strataLyApi.transferToken({ transferTo: accounts[0], amount: tokenstoclaim, tokenaddress: currentToken.tokenaddress, apiKey:process.env.REACT_APP_BSC_APIKEY })
-          notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
-        } catch (error) {
-          notify('warning', error.message, 'Error')
-          console.log(error);
+      if(!isPresaleCreator && currentToken.published && currentToken.status === '2') {
+        if(myContributions.status === 0) {
+          const contributions = myContributions.contributions;
+          let listingRate = currentToken.presaleRate - (currentToken.presaleRate * 0.10);
+          const tokenstoclaim = contributions * listingRate;
+    
+          try {
+            const response = await strataLyApi.transferToken({ transferTo: accounts[0], amount: tokenstoclaim, tokenaddress: currentToken.tokenaddress, apiKey:process.env.REACT_APP_BSC_APIKEY })
+            notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
+          } catch (error) {
+            notify('warning', error.message, 'Error')
+            console.log(error);
+          }
+        }else {
+          let message = myContributions.status === 1 ? 'Already claimed Tokens' : 'Error'
+          notify('warning', message, 'Error')
+          clearAsync()
         }
       } else {
         notify('warning', 'Cannot claim tokens yet', 'Error')
@@ -220,18 +248,34 @@ const SingleToken = () => {
       const { accounts } = metamask;
       // proceed
       if(!isPresaleCreator && currentToken.status === '2') {
-        try {
-          const response = await strataLyApi.transferEther({ transferTo: accounts[0], amount: myContributions })
-          notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
-        } catch (error) {
-          notify('warning', error.message, 'Error')
-          console.log(error);
+        if(myContributions.status === 0) {
+          try {
+            const response = await strataLyApi.transferEther({ transferTo: accounts[0], amount: myContributions.contributions })
+            notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
+          } catch (error) {
+            notify('warning', error.message, 'Error')
+            console.log(error);
+          }
+        }else {
+          let message = myContributions.status === 1 ? 'Already Collected Refund' : 'Error'
+          notify('warning', message, 'Error')
+          clearAsync()
         }
       } else {
         notify('warning', 'Cannot claim tokens yet', 'Error')
         clearAsync()
       }
     }
+  }
+
+  // ====== presaleCreator only =====
+  // TODO: published & failed & completion check
+  const removeLiquidity = async () => {
+
+  }
+
+  const publishOrFailToken = async () => {
+    
   }
 
   return(
@@ -260,10 +304,9 @@ const SingleToken = () => {
                   <CardTitle>Back To Tokens List</CardTitle>
                 </CardLabel>
                 <CardActions>
-                  {/* TODO: add published param */}
                   { !isPresaleCreator ? (<>
-                    { currentToken.status === '2' && currentToken.isPublished ? (<Button onClick={claimTokens} isLight isOutline rounded={0} color='primary' style={{padding:15,fontSize:15}}>Claim Tokens</Button>) : null }
-                    { !['0','1','2'].includes(currentToken.status) ? (<Button onClick={collectRefund} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>Collect Refund</Button>) : null }
+                    { currentToken.status === '2' && currentToken.published === 1 && myContributions.status === 0 ? (<Button onClick={claimTokens} isLight isOutline rounded={0} color='primary' style={{padding:15,fontSize:15}}>Claim Tokens</Button>) : null }
+                    { !['0','1','2'].includes(currentToken.status) && myContributions.status === 0 ? (<Button onClick={collectRefund} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>Collect Refund</Button>) : null }
                   </>) : null }
 
 
@@ -405,12 +448,14 @@ const SingleToken = () => {
                                   <CardTitle>Edit/Update Presale</CardTitle>
                                 </CardLabel>
                                 <CardActions>
-                                  <Tooltips isDisableElements title='Finilize and close presale'>
-                                    <Button isDisable rounded={0} isLight size='sm' color='success'><Icon icon={'Check'} /> Publish</Button>
-                                  </Tooltips>
-                                  <Tooltips isDisableElements title='Cancel presale and refund contributions'>
-                                    <Button isDisable rounded={0} isLight size='sm' color='danger'><Icon icon={'Cancel'} /> Cancel</Button>
-                                  </Tooltips>
+                                  { currentToken.status === '2' ? (<>
+                                    <Tooltips isDisableElements title='Finilize and close presale'>
+                                      <Button isDisable rounded={0} isLight size='sm' color='success'><Icon icon={'Check'} /> Publish</Button>
+                                    </Tooltips>
+                                    <Tooltips isDisableElements title='Cancel presale and refund contributions'>
+                                      <Button isDisable rounded={0} isLight size='sm' color='danger'><Icon icon={'Cancel'} /> Cancel</Button>
+                                    </Tooltips>
+                                  </>) : null }
                                 </CardActions>
                               </CardHeader>
                               <CardBody>
@@ -475,7 +520,7 @@ const SingleToken = () => {
                                 <CardLabel className='text-muted'>
                                   <CardTitle>
                                     Your spent allowance
-                                    <p style={{fontSize:20}}><Icon icon={'IncompleteCircle'} /> {myContributions} / {currentToken.maxContributions} BNB</p>
+                                    <p style={{fontSize:20}}><Icon icon={'IncompleteCircle'} /> {myContributions.contributions} / {currentToken.maxContributions} BNB</p>
                                   </CardTitle>
                                 </CardLabel>
                               </CardHeader>
@@ -490,7 +535,7 @@ const SingleToken = () => {
                                       onChange={(event)=>{
                                         let amount = event.target.value;
                                         if(parseFloat(amount) <= parseFloat(currentToken.maxContributions)) {
-                                          const allowance = currentToken.maxContributions - myContributions
+                                          const allowance = currentToken.maxContributions - myContributions.contributions
                                           updateForm({ ...form, contribution: amount })
                                           if(allowance < 0 || amount > allowance) setButtonStatus(!buttonStatus)
                                         }
@@ -505,7 +550,7 @@ const SingleToken = () => {
                                     </InputGroup>
 
                                     <small className='text-danger'>{ form.contribution > balance ? 'Insufficient Balance' : null }</small>
-                                    <small className='text-danger'>{ form.contribution > (currentToken.maxContributions - myContributions) ? 'Exceeded Limit' : null }</small>
+                                    <small className='text-danger'>{ form.contribution > (currentToken.maxContributions - myContributions.contributions) ? 'Exceeded Limit' : null }</small>
                                   </div>
                                   <h5>You get</h5>
                                   <h4>{(presaleRate * parseFloat(form.contribution)).toFixed(2)} {currentToken.tokenname}</h4>

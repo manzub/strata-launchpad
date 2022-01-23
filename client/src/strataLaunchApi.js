@@ -17,7 +17,7 @@ const strataLyApi = {
     const url = baseUrl + `/tokens/contribute/${tokenaddress}/${useraddress}`
     const response = await axios.get(url)
     const { status, data } = response.data
-    if (status === "1") return { status, contributions: data.contributedFunds }
+    if (status === "1") return { status, result: { contributions: data.contributedFunds, status: data.status } }
     return { status, message: response.data.message }
   },
   async contributeToPresale({ tokenaddress, contribution, useraddress }) {
