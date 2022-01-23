@@ -17,7 +17,8 @@ export const metamaskInitialState = {
 
 export const tokensAndPairsInitialState = {
   loaded: false,
-  tokens: []
+  tokens: [],
+  stock_rates: null
 }
 
 export const launchPadInitialState = {

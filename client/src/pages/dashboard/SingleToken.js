@@ -274,8 +274,10 @@ const SingleToken = () => {
 
   }
 
-  const publishOrFailToken = async () => {
-    
+  const publishOrFailToken = async (option = 1) => {
+    if(currentToken.status === '2') {
+      // proceed
+    }
   }
 
   return(
@@ -368,15 +370,7 @@ const SingleToken = () => {
                   </div>
 
                   </div>
-                  <div className={classNames(
-                    'col-md-6',
-                    'rounded-2',
-                    'p-5',
-                    {
-                      'bg-dark': darkModeStatus,
-                      'bg-light': !darkModeStatus
-                    }
-                  )}>
+                  <div className={classNames('col-md-6 rounded-2 p-5', { 'bg-dark': darkModeStatus, 'bg-light': !darkModeStatus })}>
                     <Accordion
                     id='presale-info'
                     tag='div'
@@ -450,10 +444,14 @@ const SingleToken = () => {
                                 <CardActions>
                                   { currentToken.status === '2' ? (<>
                                     <Tooltips isDisableElements title='Finilize and close presale'>
-                                      <Button isDisable rounded={0} isLight size='sm' color='success'><Icon icon={'Check'} /> Publish</Button>
+                                      <Button onClick={() => publishOrFailToken(1)} isDisable={currentToken.status === '2' && currentToken.published === 0} rounded={0} isLight size='sm' color='success'>
+                                        <Icon icon={'Check'} /> Publish
+                                      </Button>
                                     </Tooltips>
                                     <Tooltips isDisableElements title='Cancel presale and refund contributions'>
-                                      <Button isDisable rounded={0} isLight size='sm' color='danger'><Icon icon={'Cancel'} /> Cancel</Button>
+                                      <Button onClick={() => publishOrFailToken(2)} isDisable={currentToken.status === '2' && currentToken.published === 0} rounded={0} isLight size='sm' color='danger'>
+                                        <Icon icon={'Cancel'} /> Cancel
+                                      </Button>
                                     </Tooltips>
                                   </>) : null }
                                 </CardActions>

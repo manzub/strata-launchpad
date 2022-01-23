@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { createRef, useEffect } from 'react';
 import PageWrapper from '../../layout/PageWrapper/PageWrapper';
 import Page from '../../layout/Page/Page';
 import { combineMenu } from '../../menu';
@@ -9,24 +9,34 @@ import classNames from 'classnames';
 import useDarkMode from '../../hooks/useDarkMode';
 import { useNavigate } from 'react-router-dom';
 import Progress from '../../components/bootstrap/Progress';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import DefaultDashboard from './DefaultDashboard';
 import { BitcoinBtcLogo, EthereumEthLogo, BinanceCoinBnbLogo, StrataTodayLogo, PancakeswapCakeLogo } from '../../components/icon/svg-icons';
+import bscScanApi from '../../bscScanApi';
 
 const Dashboard = () => {
-  const tokensAndPairs = useSelector(state => state.tokensAndPairs.tokens)
+  const { tokens: tokensAndPairs, stock_rates } = useSelector(state => state.tokensAndPairs)
+
+  const dispatch = useDispatch();
   const { darkModeStatus } = useDarkMode();
   const navigate = useNavigate();
-
 
   const sorted = tokensAndPairs.sort((first, second) => {
     if (first.participants > second.participants) return 1
     if (first.participants < second.participants) return -1
     return 0
   });
-
   const completedTokens = sorted.filter(x => x.status === '2').slice(0, 3);
   const liveTokens = sorted.filter(x => x.status === '1').slice(0, 3);
+
+  useEffect(() => {
+    if (!stock_rates) {
+      // get exchange rates from coin api
+      bscScanApi.coinApiMarketRate().then(result => {
+        dispatch({ type: 'UPDATE_STOCKRATES', payload: result })
+      })
+    }
+  }, [stock_rates, dispatch])
   
 	return (
 		<PageWrapper title={combineMenu.dashboard.text}>
@@ -38,18 +48,26 @@ const Dashboard = () => {
               <div className='info_left'></div>
               <div className='info_right'>
                 <div className='d-flex align-items-center justify-content-evenly' style={{width:300}}>
-                  <div className='item d-flex align-items-center'>
-                    <BinanceCoinBnbLogo width={30} />
-                    <h6 style={{margin: '0px 0px 0px 5px'}} className={classNames({ 'text-light': darkModeStatus })}>$423.68</h6>
-                  </div>
-                  <div className='item d-flex align-items-center'>
-                    <EthereumEthLogo width={20} />
-                    <h6 style={{margin: '0px 0px 0px 5px'}} className={classNames({ 'text-light': darkModeStatus })}>$423.68</h6>
-                  </div>
-                  <div className='item d-flex align-items-center'>
-                    <BitcoinBtcLogo width={30} />
-                    <h6 style={{margin: '0px 0px 0px 5px'}} className={classNames({ 'text-light': darkModeStatus })}>$423.68</h6>
-                  </div>
+                  { stock_rates ? (<>
+                    <div className='item d-flex align-items-center'>
+                      <BinanceCoinBnbLogo width={30} />
+                      <h6 style={{margin: '0px 0px 0px 5px'}} className={classNames({ 'text-light': darkModeStatus })}>
+                        ${new Intl.NumberFormat().format(stock_rates.binance)}
+                      </h6>
+                    </div>
+                    <div className='item d-flex align-items-center'>
+                      <EthereumEthLogo width={20} />
+                      <h6 style={{margin: '0px 0px 0px 5px'}} className={classNames({ 'text-light': darkModeStatus })}>
+                        ${new Intl.NumberFormat().format(stock_rates.ethereum)}
+                      </h6>
+                    </div>
+                    <div className='item d-flex align-items-center'>
+                      <BitcoinBtcLogo width={30} />
+                      <h6 style={{margin: '0px 0px 0px 5px'}} className={classNames({ 'text-light': darkModeStatus })}>
+                        ${new Intl.NumberFormat().format(stock_rates.bitcoin)}
+                      </h6>
+                    </div>
+                  </>) : <span className='text-muted'>...</span> }
                 </div>
               </div>
             </div>
@@ -213,7 +231,7 @@ const Dashboard = () => {
 
                                 <div className='mt-2 d-flex align-items-center justify-content-between'>
                                   <h6>{item.participants} participnts</h6>
-                                  <h6 className='text-success'>{100 * ((item.currentCap / 0) / 0)}% <Icon icon={'ArrowUp'} /></h6>
+                                  <h6 className='text-success'>{((item.hardCap - item.currentCap) / item.hardCap) * 100}% <Icon icon={'ArrowUp'} /></h6>
                                 </div>
                               </div>
                             </div>
@@ -327,7 +345,7 @@ const Dashboard = () => {
 
                                 <div className='mt-2 d-flex align-items-center justify-content-between'>
                                   <h6>{item.participants} participnts</h6>
-                                  <h6 className='text-success'>{100 * ((item.currentCap / 0) / 0)}% <Icon icon={'ArrowUp'} /></h6>
+                                  <h6 className='text-success'>{((item.hardCap - item.currentCap) / item.hardCap) * 100}% <Icon icon={'ArrowUp'} /></h6>
                                 </div>
                               </div>
                             </div>

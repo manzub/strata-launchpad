@@ -24,7 +24,6 @@ app.use(express.json({ limit: "50mb" }));
 // Add headers before the routes are defined
 app.use(cors())
 
-// TODO: debug logger middleware
 function statusLogger(status = 1, message) {
   try {
     if (fs.readFileSync('./server/status.log')) {
@@ -44,10 +43,10 @@ function middleware(req, res, next) {
   next();
 }
 
+// TODO: ADD API KEY
 
 // ========== ACCOUNT ROUTES =============
 app.post('/transfer-token', middleware, async function(req, res) {
-  // TODO: transfer token and transfer ether
   const accounts = await web3.eth.getAccounts();
   const { transferTo, amount, tokenaddress, apiKey } = req.body;
 
@@ -76,7 +75,6 @@ app.post('/transfer-token', middleware, async function(req, res) {
 })
 
 app.post('/transfer-ether', middleware, async function(req, res) {
-  // TODO: transfer token and transfer ether
   const accounts = await web3.eth.getAccounts();
   const { transferTo, amount } = req.body;
 

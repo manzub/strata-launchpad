@@ -18,6 +18,9 @@ export const tokensAndPairsReducer = (state = tokensAndPairsInitialState, action
     case FETCH_TOKENS:
       // perform action before returning new state
       return { ...state, ...action.payload, loaded: true };
+
+    case 'UPDATE_STOCKRATES':
+      return { ...state, stock_rates: action.payload }
     case LOADING: 
       return { ...state, loaded: false }
     default:
