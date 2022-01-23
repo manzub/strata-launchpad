@@ -6,3 +6,14 @@ Status Code: 0, Message: Invalid login: 535-5.7.8 Username and Password not acce
 Request Options: http:/POST - /transfer-token
 Request Options: http:/POST - /transfer-token
 Status Code: 1, Message: transfered refunds token
+Request Options: http:/POST - /set-airdrop-token
+Status Code: 0, Message: Cannot set headers after they are sent to the client
+Request Options: http:/POST - /set-airdrop-token
+Request Options: http:/POST - /set-airdrop-token
+Request Options: http:/POST - /set-airdrop-token
+Request Options: http:/POST - /set-airdrop-token
+Request Options: http:/POST - /set-airdrop-token
+Request Options: http:/POST - /set-airdrop-token
+Request Options: http:/POST - /set-airdrop-token
+Request Options: http:/POST - /set-airdrop-token
+Request Options: http:/POST - /set-airdrop-token?apiKey=Q7QXTMXCWNJ7HK742I6WG77VUNEIRH12UB

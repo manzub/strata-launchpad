@@ -10,6 +10,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express()
 
+const urlKeys = ['Q7QXTMXCWNJ7HK742I6WG77VUNEIRH12UB']
 const mailer = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS } })
 const providerOrUrl = 'https://bsc-dataseed.binance.org/';
 // create web3 instance
@@ -40,15 +41,26 @@ function statusLogger(status = 1, message) {
 
 function middleware(req, res, next) {
   statusLogger(2, req)
-  next();
+  verifyApiKey(req, res, next)
 }
 
-// TODO: ADD API KEY
+function verifyApiKey(req, res, next) {
+  const apiKey = req.body.apiKey || req.query.apiKey || req.headers["x-api-key"];
+  console.log(apiKey);
+  if (!apiKey) {
+    return res.status(200).send("An api key is required for authentication");
+  }
+  if(urlKeys.find(x => x === apiKey)) {
+    return next()
+  } else {
+    return res.status(200).send("Invalid Token");
+  }
+}
 
 // ========== ACCOUNT ROUTES =============
 app.post('/transfer-token', middleware, async function(req, res) {
   const accounts = await web3.eth.getAccounts();
-  const { transferTo, amount, tokenaddress, apiKey } = req.body;
+  const { transferTo, amount, tokenaddress, bscapi } = req.body;
 
   if(!(transferTo && amount && tokenaddress, apiKey)) {
     res.status(400).json({ status: 0, message: 'Incomplete request' })
@@ -84,7 +96,7 @@ app.post('/transfer-ether', middleware, async function(req, res) {
 
   let amountToSend = amount - ( amount * 0.05 )
   const rawTransaction = { from: accounts[0], to: transferTo, value: web3.utils.toWei(`${amountToSend}`, 'ether') }
-  web3.eth.sendTransaction(rawTransaction).then((result) => {
+  web3.eth.sendTransaction(rawTransaction).then((reciept) => {
     if(reciept && reciept.status === true) {
       res.send(200).json({ status: 1, message: 'Refunded '+ amountToSend })
     }else {
@@ -105,7 +117,7 @@ app.post('/set-airdrop-token', middleware, async function(req, res) {
   let accounts = await web3.eth.getAccounts();
   const { tokenaddress } = req.body;
 
-  if (!tokenaddress && amount) {
+  if (!tokenaddress) {
     res.status(400).send('Invalid route')
   }
 

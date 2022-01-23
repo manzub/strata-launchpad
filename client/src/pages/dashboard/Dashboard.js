@@ -101,7 +101,7 @@ const Dashboard = () => {
                   <CardBody className=''>
                     <h3><Icon color='primary' icon={'Launch'} /> StrataLaunch</h3>
                     <p>Save Valuable Time and Launch Your Project With the Security of our Platform!</p>
-                    <Button onClick={() => navigate('dashboard/tokens/all')} size='sm' isLight rounded={0} color='primary' isOutline>View IDOs</Button>
+                    <Button onClick={() => navigate(`dashboard/tokens/${liveTokens.length >= 2 ? 'live' : 'all'}`)} size='sm' isLight rounded={0} color='primary' isOutline>View IDOs</Button>
                   </CardBody>
                 </Card>
               </div>

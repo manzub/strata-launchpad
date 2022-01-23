@@ -224,11 +224,14 @@ const SingleToken = () => {
           const tokenstoclaim = contributions * listingRate;
     
           try {
-            const response = await strataLyApi.transferToken({ transferTo: accounts[0], amount: tokenstoclaim, tokenaddress: currentToken.tokenaddress, apiKey:process.env.REACT_APP_BSC_APIKEY })
+            const response = await strataLyApi.transferToken({ transferTo: accounts[0], amount: tokenstoclaim, tokenaddress: currentToken.tokenaddress, bscapi:process.env.REACT_APP_BSC_APIKEY })
+            // TODO: add status
+            await strataLyApi.ClaimRefundContributions()
             notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
+            clearAsync()
           } catch (error) {
             notify('warning', error.message, 'Error')
-            console.log(error);
+            clearAsync()
           }
         }else {
           let message = myContributions.status === 1 ? 'Already claimed Tokens' : 'Error'
@@ -242,6 +245,29 @@ const SingleToken = () => {
     }
   }
 
+  // TODO: test refund creator tokens
+  const refundTokenCreator = async () => {
+    if(metamask) {
+      setWaitingAsync(true);
+      const { accounts } = metamask;
+      // proceed
+      if(isPresaleCreator && !['0','1','2'].includes(currentToken.status)) {
+        const amountToClaim = currentToken.amountToSell - parseFloat(currentToken.amountToSell * 0.09)
+
+        try {
+          // transfer tokens
+          const response = await strataLyApi.transferToken({ transferTo: accounts[0], amount: amountToClaim, tokenaddress: currentToken.tokenaddress, bscapi:process.env.REACT_APP_BSC_APIKEY })
+          notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
+          clearAsync()
+        } catch (error) {
+          notify('warning', error.message, 'Error')
+          clearAsync()
+        }
+      }
+    }
+  }
+
+  // TODO: test collect refund
   const collectRefund = async () => {
     if(metamask) {
       setWaitingAsync(true);
@@ -274,9 +300,19 @@ const SingleToken = () => {
 
   }
 
+  // TODO: test publishOrFailToken
   const publishOrFailToken = async (option = 1) => {
     if(currentToken.status === '2') {
+      setWaitingAsync(true)
       // proceed
+      try {
+        await strataLyApi.publishOrFail({ tokenaddress: currentToken.tokenaddress, option })
+        notify('success', option === 1 ? 'Published presale check back in 24hrs' : 'Presale cancelled, refunding tokens', 'Info')
+        clearAsync()
+      } catch (error) {
+        notify('danger', error.message, 'Error occurred')
+        clearAsync()
+      }
     }
   }
 
@@ -308,10 +344,13 @@ const SingleToken = () => {
                 <CardActions>
                   { !isPresaleCreator ? (<>
                     { currentToken.status === '2' && currentToken.published === 1 && myContributions.status === 0 ? (<Button onClick={claimTokens} isLight isOutline rounded={0} color='primary' style={{padding:15,fontSize:15}}>Claim Tokens</Button>) : null }
-                    { !['0','1','2'].includes(currentToken.status) && myContributions.status === 0 ? (<Button onClick={collectRefund} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>Collect Refund</Button>) : null }
+                    { !['0','1','2'].includes(currentToken.status) && myContributions.status === 0 ? (<Button onClick={collectRefund} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>Refund BNB</Button>) : null }
                   </>) : null }
 
 
+                  { isPresaleCreator && !['0','1','2'].includes(currentToken.status) ? (<>
+                    <Button onClick={refundTokenCreator} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>Refund Tokens</Button>
+                  </>) : null }
                   { isPresaleCreator ? (<Badge className='p-4' style={{fontSize:15}} rounded={0} isLight color='warning'>Edit Presale</Badge>) : null }
                   <Badge className='text-capitalize' style={{padding:20,fontSize:15}} color={badgeColor1} rounded={0} isLight>{statusToText(currentToken.status)}</Badge>
                 </CardActions>
@@ -443,6 +482,11 @@ const SingleToken = () => {
                                 </CardLabel>
                                 <CardActions>
                                   { currentToken.status === '2' ? (<>
+                                    {/* badge */}
+                                    { currentToken.published !== 0 ? <>
+                                      <Badge className='text-capitalize' style={{padding:20,fontSize:15}} color={badgeColor1} rounded={0} isLight>{currentToken.published === 1 ? 'Published' : 'Failed'}</Badge>
+                                    </> : null }
+                                    {/* actions */}
                                     <Tooltips isDisableElements title='Finilize and close presale'>
                                       <Button onClick={() => publishOrFailToken(1)} isDisable={currentToken.status === '2' && currentToken.published === 0} rounded={0} isLight size='sm' color='success'>
                                         <Icon icon={'Check'} /> Publish
