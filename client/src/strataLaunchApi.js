@@ -30,7 +30,7 @@ const strataLyApi = {
     return { status, message: response.data.message }
   },
   async ClaimRefundContributions({ useraddress, tokenaddress, option }) {
-    const url = baseUrl + `/tokens/publish/${useraddress}/${tokenaddress}/${option}`;
+    const url = baseUrl + `/tokens/contribution/${useraddress}/${tokenaddress}/${option}`;
     const response = await axios.get(url)
     const { status } = response.data;
     if(status === "1") return { status }

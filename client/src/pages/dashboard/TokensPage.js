@@ -124,13 +124,23 @@ const Dashboard = () => {
               </CardHeader>
 
               <CardBody>
-                <table className='table table-modern table-hover'>
-                  <tbody>
-                    {filterResult(tokensAndPairs, filterState).map((i, index) => (
-                      <TableRow key={i.tokenaddress} {...i} index={index + 1} />
-                    ))}
-                  </tbody>
-                </table>
+                { filterResult(tokensAndPairs, filterState).length < 1 ? (<>
+                  <div className='text-center text-muted'>
+                    <Icon size='5x' icon='AccessTime' />
+                    <h3>No <span className='text-capitalize'>{filterState === 0 ? filtersText[filterState] : `Presale ${filtersText[filterState]}`}</span> Tokens</h3>
+                    <Button size='sm' isLight rounded={0} color='primary' isOutline onClick={() => navigate('/dashboard/launchpad')}>
+                      Create Presale <Icon icon='ArrowForward' />
+                    </Button>
+                  </div>
+                </>) : (<>
+                  <table className='table table-modern table-hover'>
+                    <tbody>
+                      {filterResult(tokensAndPairs, filterState).map((i, index) => (
+                        <TableRow key={i.tokenaddress} {...i} index={index + 1} />
+                      ))}
+                    </tbody>
+                  </table>
+                </>) }
               </CardBody>
             </Card>
           </div>

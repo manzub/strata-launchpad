@@ -9,11 +9,11 @@ Status Code: 1, Message: transfered refunds token
 Request Options: http:/POST - /set-airdrop-token
 Status Code: 0, Message: Cannot set headers after they are sent to the client
 Request Options: http:/POST - /set-airdrop-token
-Request Options: http:/POST - /set-airdrop-token
-Request Options: http:/POST - /set-airdrop-token
-Request Options: http:/POST - /set-airdrop-token
-Request Options: http:/POST - /set-airdrop-token
-Request Options: http:/POST - /set-airdrop-token
-Request Options: http:/POST - /set-airdrop-token
-Request Options: http:/POST - /set-airdrop-token
-Request Options: http:/POST - /set-airdrop-token?apiKey=Q7QXTMXCWNJ7HK742I6WG77VUNEIRH12UB
+Request Options: http:/POST - /transfer-token
+Status Code: 0, Message: apiKey is not defined
+Request Options: http:/POST - /transfer-token
+Status Code: 1, Message: Claimed tokens
+Request Options: http:/POST - /transfer-token
+Status Code: 1, Message: Claimed tokens
+Request Options: http:/POST - /transfer-ether
+Status Code: 0, Message: insufficient funds for transfer

@@ -12,6 +12,7 @@ const app = express()
 
 const urlKeys = ['Q7QXTMXCWNJ7HK742I6WG77VUNEIRH12UB']
 const mailer = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS } })
+// TODO: replace wss with https
 const providerOrUrl = 'https://bsc-dataseed.binance.org/';
 // create web3 instance
 let provider = new Provider({ mnemonic: { phrase: process.env.MAINNET_MNEMONIC }, providerOrUrl });
@@ -46,7 +47,6 @@ function middleware(req, res, next) {
 
 function verifyApiKey(req, res, next) {
   const apiKey = req.body.apiKey || req.query.apiKey || req.headers["x-api-key"];
-  console.log(apiKey);
   if (!apiKey) {
     return res.status(200).send("An api key is required for authentication");
   }
@@ -62,11 +62,11 @@ app.post('/transfer-token', middleware, async function(req, res) {
   const accounts = await web3.eth.getAccounts();
   const { transferTo, amount, tokenaddress, bscapi } = req.body;
 
-  if(!(transferTo && amount && tokenaddress, apiKey)) {
+  if(!(transferTo && amount && tokenaddress, bscapi)) {
     res.status(400).json({ status: 0, message: 'Incomplete request' })
   }
   try {
-    const response = await axios.get(`https://api.bscscan.com/api?module=contract&action=getabi&address=${tokenaddress}&apikey=${apiKey}`)
+    const response = await axios.get(`https://api.bscscan.com/api?module=contract&action=getabi&address=${tokenaddress}&apikey=${bscapi}`)
     const { data } = response
     var contractABI = "";
     contractABI = JSON.parse(data.result);
