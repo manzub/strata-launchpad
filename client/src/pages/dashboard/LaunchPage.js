@@ -150,7 +150,8 @@ const LaunchPage = (props) => {
               hardCap: parseInt(bnbToAdd), softCap: parseInt(bnbToAdd / 2), currentCap: parseFloat(bnbToAdd),
               tokenaddress, tokenname: pairingToken.tokenName, pair, startDate: dateToString(null),
               presaleEndDate: startDate, presaleCreator: accounts[0], maxContributions: 2.5, lockLiquidityFor, amountToSell, 
-              symbol: pairingToken.symbol, status: "1", participants: 1, presaleRate: parseInt(amountToSell / bnbToAdd), liquidityPercentage: 100
+              symbol: pairingToken.symbol, status: "1", participants: 1, presaleRate: parseInt(amountToSell / bnbToAdd), liquidityPercentage: 100,
+              fairLaunch: 1, published: 0
             };
 
             // transfer bnbToAdd + creationFee
@@ -192,7 +193,7 @@ const LaunchPage = (props) => {
                 tokenname: pairingToken.tokenName, pair, 
                 startDate: form.startDate, presaleEndDate: form.presaleEndDate, 
                 presaleCreator: accounts[0], maxContributions, lockLiquidityFor, amountToSell,
-                symbol: pairingToken.symbol, status: "0", participants: 0, presaleRate, liquidityPercentage
+                symbol: pairingToken.symbol, status: "0", participants: 0, presaleRate, liquidityPercentage, fairLaunch: 0, published: 0
               };
 
               var rawTransaction = { from: accounts[0], to: devaddress, value: web3.utils.toWei(`${creationFee}`, 'ether') }
