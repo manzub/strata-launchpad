@@ -248,7 +248,7 @@ const SingleToken = () => {
     }
   }
 
-  // TODO: if isFairLaunch refund BNB too
+  // TODO: collect refund params
   const refundTokenCreator = async () => {
     if(metamask) {
       setWaitingAsync(true);
@@ -256,10 +256,13 @@ const SingleToken = () => {
       // proceed
       if(isPresaleCreator && !['0','1','2'].includes(currentToken.status)) {
         const amountToClaim = currentToken.amountToSell - parseFloat(currentToken.amountToSell * 0.09)
+        const bnbToClaim = currentToken.currentCap
 
         try {
           // transfer tokens
           const response = await strataLyApi.transferToken({ transferTo: accounts[0], amount: amountToClaim, tokenaddress: currentToken.tokenaddress, bscapi:process.env.REACT_APP_BSC_APIKEY })
+          // refund bnb if isFairLaunch presale
+          currentToken.fairLaunch === 1 && await strataLyApi.transferEther({ transferTo: accounts[0], amount: bnbToClaim })
           notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
           clearAsync()
         } catch (error) {
@@ -279,8 +282,8 @@ const SingleToken = () => {
       if(!isPresaleCreator && !['1','0'].includes(currentToken.status)) {
         if(myContributions.status === 0) {
           try {
-            // const response = await strataLyApi.transferEther({ transferTo: accounts[0], amount: myContributions.contributions })
-            let response = { status: 1, message: 'sdsds' }
+            const response = await strataLyApi.transferEther({ transferTo: accounts[0], amount: myContributions.contributions })
+            // let response = { status: 1, message: 'sdsds' }
             await strataLyApi.ClaimRefundContributions({ useraddress: accounts[0], tokenaddress: currentToken.tokenaddress, option: 2 })
             notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
             clearAsync()
@@ -359,7 +362,7 @@ const SingleToken = () => {
 
 
                   { isPresaleCreator && !['0','1','2'].includes(currentToken.status) ? (<>
-                    <Button isDisable={waitingAsync} onClick={refundTokenCreator} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>{ waitingAsync ? 'loading...' : 'Refund Tokens' }</Button>
+                    <Button isDisable={waitingAsync} onClick={refundTokenCreator} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>{ waitingAsync ? 'loading...' : 'Refund Presale' }</Button>
                   </>) : null }
                   { isPresaleCreator ? (<Badge className='p-4' style={{fontSize:15}} rounded={0} isLight color='warning'>Edit Presale</Badge>) : null }
                   <Badge className='text-capitalize' style={{padding:20,fontSize:15}} color={badgeColor1} rounded={0} isLight>{statusToText(currentToken.status)}</Badge>
