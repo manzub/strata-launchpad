@@ -228,10 +228,13 @@ const SingleToken = () => {
     
           try {
             const response = await strataLyApi.transferToken({ transferTo: accounts[0], amount: tokenstoclaim, tokenaddress: currentToken.tokenaddress, bscapi:process.env.REACT_APP_BSC_APIKEY })
-
-            await strataLyApi.ClaimRefundContributions({ useraddress: accounts[0], tokenaddress: currentToken.tokenaddress, option: 1 })
-            notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
-            clearAsync()
+            if(response.status === 1) {
+              await strataLyApi.ClaimRefundContributions({ useraddress: accounts[0], tokenaddress: currentToken.tokenaddress, option: 1 })
+              notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
+              clearAsync()
+            } else {
+              throw new Error(response.message)
+            }            
           } catch (error) {
             notify('warning', error.message, 'Error')
             clearAsync()
@@ -248,32 +251,55 @@ const SingleToken = () => {
     }
   }
 
-  // TODO: collect refund params
   const refundTokenCreator = async () => {
     if(metamask) {
       setWaitingAsync(true);
       const { accounts } = metamask;
       // proceed
       if(isPresaleCreator && !['0','1','2'].includes(currentToken.status)) {
-        const amountToClaim = currentToken.amountToSell - parseFloat(currentToken.amountToSell * 0.09)
-        const bnbToClaim = currentToken.currentCap
+        if(currentToken.refunded === 0) {
+          const amountToClaim = currentToken.amountToSell - parseFloat(currentToken.amountToSell * 0.09)
+          const bnbToClaim = currentToken.currentCap
 
-        try {
-          // transfer tokens
-          const response = await strataLyApi.transferToken({ transferTo: accounts[0], amount: amountToClaim, tokenaddress: currentToken.tokenaddress, bscapi:process.env.REACT_APP_BSC_APIKEY })
-          // refund bnb if isFairLaunch presale
-          currentToken.fairLaunch === 1 && await strataLyApi.transferEther({ transferTo: accounts[0], amount: bnbToClaim })
-          notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
-          clearAsync()
-        } catch (error) {
-          notify('warning', error.message, 'Error')
+          try { // transfer tokens
+            const response = await strataLyApi.transferToken({ transferTo: accounts[0], amount: amountToClaim, tokenaddress: currentToken.tokenaddress })
+            if(response.status === 1) {
+              let option = 1;
+              // refund bnb if isFairLaunch presale
+              if(currentToken.fairLaunch === 1) {
+                const r = await strataLyApi.transferEther({ transferTo: accounts[0], amount: bnbToClaim })
+                if(r.status === 1) {
+                  option = 2
+                } else {
+                  throw new Error(r.message)
+                }
+              }
+
+              await strataLyApi.refundPresaleCreator({ tokenaddress: currentToken.tokenaddress, option })
+              notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
+              clearAsync()
+  
+              setTimeout(() => {
+                dispatch(loadingTokens())
+                dispatch(fetchTokensThunk())
+              }, 1000);
+            } else {
+              throw new Error(response.message)
+            }
+          } catch (error) {
+            notify('warning', error.message, 'Error')
+            clearAsync()
+          }
+        }else {
+          currentToken.refunded === 1 && notify('danger', 'Already refunded Tokens', 'Info')
+          currentToken.refunded === 2 && notify('danger', 'Fairlaunch: Already refunded Tokens & BNB', 'Info')
           clearAsync()
         }
       }
     }
   }
 
-  // TODO: test collect refund
+  // TODO: test contribute postman & refund route
   const collectRefund = async () => {
     if(metamask) {
       setWaitingAsync(true);
@@ -283,10 +309,14 @@ const SingleToken = () => {
         if(myContributions.status === 0) {
           try {
             const response = await strataLyApi.transferEther({ transferTo: accounts[0], amount: myContributions.contributions })
-            // let response = { status: 1, message: 'sdsds' }
-            await strataLyApi.ClaimRefundContributions({ useraddress: accounts[0], tokenaddress: currentToken.tokenaddress, option: 2 })
-            notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
-            clearAsync()
+            if(response.status === 1) {
+              await strataLyApi.ClaimRefundContributions({ useraddress: accounts[0], tokenaddress: currentToken.tokenaddress, option: 2 })
+              fetchMyContributions()
+              notify(response.status === 1 ? 'info' : 'danger', response.message, 'Info')
+              clearAsync()
+            } else {
+              throw new Error(response.message)
+            }
           } catch (error) {
             notify('warning', error.message, 'Error')
             clearAsync()
@@ -306,7 +336,12 @@ const SingleToken = () => {
   // ====== presaleCreator only =====
   // TODO: remove liquidity after lockLiquidityFor period
   const removeLiquidity = async () => {
-
+    if(metamask) {
+      const { accounts } = metamask
+      if(isPresaleCreator) {
+        // calculate today > presalestartdate + lockLiquidityFor months
+      }
+    }
   }
 
   const publishOrFailToken = async (option = 1) => {
@@ -315,7 +350,7 @@ const SingleToken = () => {
       // proceed
       try {
         await strataLyApi.publishOrFail({ tokenaddress: currentToken.tokenaddress, option })
-        notify('success', option === 1 ? 'Published presale check back in 24hrs' : 'Presale cancelled, refunding tokens', 'Info')
+        notify('success', option === 1 ? 'Published presale, check back in 24hrs' : 'Presale cancelled, refunding tokens', 'Info')
         clearAsync()
         // reload tokens
         setTimeout(() => {
@@ -357,12 +392,17 @@ const SingleToken = () => {
                 <CardActions>
                   { !isPresaleCreator && !!metamask.accounts[0] ? (<>
                     { currentToken.status === '2' && currentToken.published === 1 && myContributions.status === 0 ? (<Button onClick={claimTokens} isDisable={waitingAsync} isLight isOutline rounded={0} color='primary' style={{padding:15,fontSize:15}}>{ waitingAsync ? 'loading...' : 'Claim Tokens' }</Button>) : null }
-                    { !['0','1','2'].includes(currentToken.status) && myContributions.status === 0 ? (<Button onClick={collectRefund} isDisable={waitingAsync} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>{ waitingAsync ? 'loading...' : 'Refund My Contribution'}</Button>) : null }
+                    { !['0','1','2'].includes(currentToken.status) && myContributions.status === 0 && myContributions.contributions > 0 ? (<Button onClick={collectRefund} isDisable={waitingAsync} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>{ waitingAsync ? 'loading...' : 'Refund My Contribution'}</Button>) : null }
+                    { !['0', '1'].includes(currentToken.status) && myContributions.status !== 0 ? (<Badge className='text-capitalize' style={{padding:20,fontSize:15}} color='secondary' rounded={0} isLight>{ myContributions.status === 1 ? 'Claimed Tokens' : 'Collected Refund' }</Badge>) : null }
                   </>) : null }
 
 
                   { isPresaleCreator && !['0','1','2'].includes(currentToken.status) ? (<>
-                    <Button isDisable={waitingAsync} onClick={refundTokenCreator} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>{ waitingAsync ? 'loading...' : 'Refund Presale' }</Button>
+                    { currentToken.refunded === 0 ? (<>
+                      <Button isDisable={waitingAsync} onClick={refundTokenCreator} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>{ waitingAsync ? 'loading...' : 'Refund Presale' }</Button>
+                    </>) : (<>
+                      <Badge className='text-capitalize' style={{padding:20,fontSize:15}} color='secondary' rounded={0} isLight>Already claimed refunds</Badge>
+                    </>)}
                   </>) : null }
                   { isPresaleCreator ? (<Badge className='p-4' style={{fontSize:15}} rounded={0} isLight color='warning'>Edit Presale</Badge>) : null }
                   <Badge className='text-capitalize' style={{padding:20,fontSize:15}} color={badgeColor1} rounded={0} isLight>{statusToText(currentToken.status)}</Badge>

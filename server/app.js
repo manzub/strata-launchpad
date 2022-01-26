@@ -15,12 +15,11 @@ const mailer = nodemailer.createTransport({ service: 'gmail', auth: { user: proc
 // TODO: replace wss with https
 const providerOrUrl = 'https://bsc-dataseed.binance.org/';
 // create web3 instance
-let provider = new Provider({ mnemonic: { phrase: process.env.MAINNET_MNEMONIC }, providerOrUrl });
-const web3 = new Web3(provider);
+let web3 = null;
 // load contract abi
 const chainId = 56;
 const deployedNetwork = MyContract.networks[chainId]
-const AirdropContract = new web3.eth.Contract(MyContract.abi, deployedNetwork && deployedNetwork.address)
+// const AirdropContract = new web3.eth.Contract(MyContract.abi, deployedNetwork && deployedNetwork.address)
 
 app.use(express.json({ limit: "50mb" }));
 // Add headers before the routes are defined
@@ -57,13 +56,25 @@ function verifyApiKey(req, res, next) {
   }
 }
 
+function initWeb3() {
+  let provider = new Provider({ mnemonic: { phrase: process.env.MAINNET_MNEMONIC }, providerOrUrl });
+  web3 = new Web3(provider);
+  return;
+}
+
+const resetWeb3 = () => web3 = null;
+
 // ========== ACCOUNT ROUTES =============
 app.post('/transfer-token', middleware, async function(req, res) {
+  web3 == null && initWeb3();
+
   const accounts = await web3.eth.getAccounts();
   const { transferTo, amount, tokenaddress, bscapi } = req.body;
 
   if(!(transferTo && amount && tokenaddress, bscapi)) {
-    res.status(400).json({ status: 0, message: 'Incomplete request' })
+    resetWeb3()
+    res.json({ status: 0, message: 'Incomplete request' })
+    return;
   }
   try {
     const response = await axios.get(`https://api.bscscan.com/api?module=contract&action=getabi&address=${tokenaddress}&apikey=${bscapi}`)
@@ -78,35 +89,60 @@ app.post('/transfer-token', middleware, async function(req, res) {
     } else {
       let message = 'Error: could\' get contract abi';
       statusLogger(0, message)
-      res.status(400).json({ status: 0, message })
+      res.json({ status: 0, message })
     }
   } catch(error) {
     statusLogger(0, error.message)
-    res.status(400).json({ status: 0, message: error.message })
+    res.json({ status: 0, message: error.message })
   }
+
+  // destroy web3 instance
+  resetWeb3()
 })
 
 app.post('/transfer-ether', middleware, async function(req, res) {
+  web3 == null && initWeb3()
+
   const accounts = await web3.eth.getAccounts();
   const { transferTo, amount } = req.body;
 
   if(!(transferTo && amount)) {
-    res.status(400).json({ status: 0, message: 'Incomplete request' })
+    resetWeb3()
+    res.json({ status: 0, message: 'Incomplete request' })
+    return;
   }
 
   let amountToSend = amount - ( amount * 0.05 )
   const rawTransaction = { from: accounts[0], to: transferTo, value: web3.utils.toWei(`${amountToSend}`, 'ether') }
-  web3.eth.sendTransaction(rawTransaction).then((reciept) => {
+  try {
+    console.log('phase');
+    const reciept = await web3.eth.sendTransaction(rawTransaction)
     if(reciept && reciept.status === true) {
-      res.send(200).json({ status: 1, message: 'Refunded '+ amountToSend })
+      res.status(200).json({ status: 1, message: 'Refunded '+ amountToSend })
     }else {
       statusLogger(0, reciept.toString())
-      res.status(400).json({ status: 0, message: 'An error occurred, try again later' })
+      res.json({ status: 0, message: 'An error occurred, try again later' })
     }
-  }).catch((error) => {
+  } catch (error) {
+    console.log(error);
+    resetWeb3()
     statusLogger(0, error.message)
-    res.status(400).json({ status: 0, message: error.message })
-  });
+    res.json({ status: 0, message: error.message })
+  }
+  // web3.eth.sendTransaction(rawTransaction).then((reciept) => {
+  //   if(reciept && reciept.status === true) {
+  //     resetWeb3()
+  //     res.status(200).json({ status: 1, message: 'Refunded '+ amountToSend })
+  //   }else {
+  //     resetWeb3()
+  //     statusLogger(0, reciept.toString())
+  //     res.json({ status: 0, message: 'An error occurred, try again later' })
+  //   }
+  // }).catch((error) => {
+  //   resetWeb3()
+  //   statusLogger(0, error.message)
+  //   res.json({ status: 0, message: error.message })
+  // });
 })
 // ========== END ACCOUNT ROUTES =============
 
@@ -114,25 +150,33 @@ app.post('/transfer-ether', middleware, async function(req, res) {
 
 // =========== AIRDROP ROUTES =============
 app.post('/set-airdrop-token', middleware, async function(req, res) {
+  web3 == null && initWeb3()
   let accounts = await web3.eth.getAccounts();
   const { tokenaddress } = req.body;
 
   if (!tokenaddress) {
-    res.status(400).send('Invalid route')
+    res.send('Invalid route')
   }
 
+  const AirdropContract = new web3.eth.Contract(MyContract.abi, deployedNetwork && deployedNetwork.address)
   try {
     const r = await AirdropContract.methods.setTokenAddress(tokenaddress).send({ from: accounts[0] })
     console.log(r);
     res.status(200).json({ status: 1, message: 'approved!' })
   } catch (error) {
     statusLogger(0, error.message)
-    res.status(400).send(error.message)
+    res.send(error.message)
   }
+
+  // destroy web3 instance
+  resetWeb3()
 })
 
 app.post('/airdrop-tokens', middleware, async function(req, res) {
+  web3 == null && initWeb3()
   let accounts = await web3.eth.getAccounts();
+
+  const AirdropContract = new web3.eth.Contract(MyContract.abi, deployedNetwork && deployedNetwork.address)
   const { distributionList, tokensperuser, creatorEmail } = req.body;
 
   let completedList = [];
@@ -172,6 +216,9 @@ app.post('/airdrop-tokens', middleware, async function(req, res) {
   }
 
   res.status(200).json({ status: 1, message: 'Dropping Tokens!' })
+
+  // destroy web3 instance
+  resetWeb3()
 })
 // =========== END AIRDROP ROUTES =============
 

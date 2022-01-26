@@ -176,8 +176,12 @@ const Airdrop = () => {
 
         try {
           const response = await strataLyApi.dropTokens({ distributionList, tokensperuser: form.tokensperuser, creatorEmail: form.creatoremail })
-          notify('success', response.message, 'Airdrop Completed!')
-          clearAsync();
+          if(response.status === 1) {
+            notify('success', response.message, 'Airdrop Completed!')
+            clearAsync();
+          } else {
+            throw new Error(response.message)
+          }
         } catch (error) {
           notify('danger', error.message, 'Airdrop error')
           clearAsync()

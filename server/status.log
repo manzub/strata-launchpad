@@ -1,19 +1,21 @@
-Request Options: http:/GET - /transfer-token
-Request Options: http:/POST - /set-airdrop-token
-Request Options: http:/POST - /airdrop-tokens
-Status Code: 0, Message: Invalid login: 535-5.7.8 Username and Password not accepted. Learn more at
-535 5.7.8  https://support.google.com/mail/?p=BadCredentials fh23sm1903034ejc.176 - gsmtp
-Request Options: http:/POST - /transfer-token
-Request Options: http:/POST - /transfer-token
-Status Code: 1, Message: transfered refunds token
-Request Options: http:/POST - /set-airdrop-token
-Status Code: 0, Message: Cannot set headers after they are sent to the client
-Request Options: http:/POST - /set-airdrop-token
-Request Options: http:/POST - /transfer-token
-Status Code: 0, Message: apiKey is not defined
-Request Options: http:/POST - /transfer-token
-Status Code: 1, Message: Claimed tokens
-Request Options: http:/POST - /transfer-token
-Status Code: 1, Message: Claimed tokens
 Request Options: http:/POST - /transfer-ether
-Status Code: 0, Message: insufficient funds for transfer
+Request Options: http:/POST - /transfer-ether
+Request Options: http:/POST - /transfer-ether
+Request Options: http:/POST - /transfer-ether
+Request Options: http:/POST - /transfer-ether
+Request Options: http:/POST - /transfer-ether
+Request Options: http:/POST - /transfer-ether
+Request Options: http:/POST - /transfer-ether
+Request Options: http:/POST - /transfer-ether
+Request Options: http:/POST - /transfer-ether
+Request Options: http:/POST - /transfer-token
+Status Code: 1, Message: Claimed tokens
+Request Options: http:/POST - /transfer-token
+Request Options: http:/POST - /transfer-token
+Request Options: http:/POST - /transfer-token
+Request Options: http:/POST - /transfer-token
+Request Options: http:/POST - /transfer-token
+Request Options: http:/POST - /transfer-token
+Request Options: http:/POST - /transfer-token
+Request Options: http:/POST - /transfer-token
+Status Code: 1, Message: Claimed tokens

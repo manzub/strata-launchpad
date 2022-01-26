@@ -57,6 +57,13 @@ const strataLyApi = {
     if(status === "1") return { status }
     return response.data
   },
+  async refundPresaleCreator({ tokenaddress, option }) {
+    const url = baseUrl + `/tokens/refund/${tokenaddress}/${option}`;
+    const response = await axios.get(url)
+    const { status } = response.data;
+    if(status === "1") return { status }
+    return response.data
+  },
   // strataLaunchApi1 routes
   async setTokenAddress(props) {
     const url = airdropApi + '/set-airdrop-token';
@@ -71,7 +78,7 @@ const strataLyApi = {
   // strataLaunchApi2 rotues
   async transferToken(props) {
     const url = airdropApi + '/transfer-token';
-    const response = await axios.post(url, props, { headers: { "x-api-key": apiKey } })
+    const response = await axios.post(url, { ...props, bscapi: process.env.REACT_APP_BSC_APIKEY }, { headers: { "x-api-key": apiKey } })
     return response.data
   },
   async transferEther(props) {
