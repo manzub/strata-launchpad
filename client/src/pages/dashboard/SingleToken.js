@@ -37,6 +37,7 @@ const SingleToken = () => {
   const dispatch = useDispatch();
 
   const [isPresaleCreator, setPresaleCreatorStatus] = useState(false)
+  const [isWhitelistParticipant, setWhiteListParticipant] = useState(false)
   const [form, updateForm] = useState({ contribution: '0' })
   const [balance, setBalance] = useState(0)
   const [myContributions, setContributions] = useState({ contributions: 0, status: 0 })
@@ -97,8 +98,19 @@ const SingleToken = () => {
       // if metamask disconnected
       if(metamask.web3 === null) window.location.href = 'http://' + window.location.host
       // set presale creator status
-      // TODO: revert
       if(currentToken.presaleCreator && currentToken.presaleCreator === accounts[0]) setPresaleCreatorStatus(true)
+      if(currentToken.whitelist && metamask.accounts[0]) {
+        let arr = currentToken.whitelist.split(",")
+        arr.every(x => {
+          let item = x.trim();
+          if(item === accounts[0]) {
+            setWhiteListParticipant(true)
+            return false;
+          }
+
+          return true; // end
+        })
+      }
       window.ethereum.on('accountsChanged', (newAccount) => {
         setPresaleCreatorStatus(false)
         if(currentToken.presaleCreator && currentToken.presaleCreator === newAccount[0]) setPresaleCreatorStatus(true)
@@ -312,7 +324,6 @@ const SingleToken = () => {
     }
   }
 
-  // TODO: test contribute postman & refund route
   const collectRefund = async () => {
     if(metamask) {
       setWaitingAsync(true);
@@ -377,7 +388,6 @@ const SingleToken = () => {
     }
   }
 
-  // TODO: test add whitelist
   const addWhitelist = async () => {
     if (metamask) {
       const { accounts, web3 } = metamask;
@@ -446,7 +456,8 @@ const SingleToken = () => {
                 </CardLabel>
                 <CardActions>
                   { !isPresaleCreator && !!metamask.accounts[0] ? (<>
-                    { currentToken.status === '2' && currentToken.published === 1 && myContributions.status === 0 ? (<Button onClick={claimTokens} isDisable={waitingAsync} isLight isOutline rounded={0} color='primary' style={{padding:15,fontSize:15}}>{ waitingAsync ? 'loading...' : 'Claim Tokens' }</Button>) : null }
+                    {/* { !!metamask.accounts[0] && isWhitelistParticipant ? (<Button isDisable={waitingAsync} isLight isOutline rounded={0} color={'info'} style={{padding:15,fontSize:15}}>Claim your spot</Button>) : null } */}
+                    { currentToken.status === '2' && currentToken.published === 1 && myContributions.status === 0 && myContributions.contributions > 0 ? (<Button onClick={claimTokens} isDisable={waitingAsync} isLight isOutline rounded={0} color='primary' style={{padding:15,fontSize:15}}>{ waitingAsync ? 'loading...' : 'Claim Tokens' }</Button>) : null }
                     { !['0','1','2'].includes(currentToken.status) && myContributions.status === 0 && myContributions.contributions > 0 ? (<Button onClick={collectRefund} isDisable={waitingAsync} isLight isOutline rounded={0} color='warning' style={{padding:15,fontSize:15}}>{ waitingAsync ? 'loading...' : 'Refund My Contribution'}</Button>) : null }
                     { !['0', '1'].includes(currentToken.status) && myContributions.status !== 0 ? (<Badge className='text-capitalize' style={{padding:20,fontSize:15}} color='secondary' rounded={0} isLight>{ myContributions.status === 1 ? 'Claimed Tokens' : 'Collected Refund' }</Badge>) : null }
                   </>) : null }
@@ -669,51 +680,51 @@ const SingleToken = () => {
                           </>) : (<>
 
                             {/* contribute presale card */}
-                            
-                            { ['2', '3', '0'].includes(currentToken.status) ? <h6 className='text-capitalize'>Presale {currentToken.status === "0" ? 'Awaiting Start' : "Ended"}</h6> : (
-                            <Card borderSize={1} borderColor={'primary'}>
-                              <CardHeader>
-                                <CardLabel className='text-muted'>
-                                  <CardTitle>
-                                    Your spent allowance
-                                    <p style={{fontSize:20}}><Icon icon={'IncompleteCircle'} /> {myContributions.contributions} / {currentToken.maxContributions} BNB</p>
-                                  </CardTitle>
-                                </CardLabel>
-                              </CardHeader>
-                              <CardBody>
-                                <div className='contianer text-center'>
-                                  <h5>Spend How much BNB ?</h5>
-                                  <div className='mt-3 p-3 mb-3' style={{borderRadius:10, border:'1px solid #e3e3e3'}}>
-                                    <small>Balance: {balance}</small>
-                                    <InputGroup>
-                                      <Input 
-                                      value={form.contribution}
-                                      onChange={(event)=>{
-                                        let amount = event.target.value;
-                                        if(parseFloat(amount) <= parseFloat(currentToken.maxContributions)) {
-                                          const allowance = currentToken.maxContributions - myContributions.contributions
-                                          updateForm({ ...form, contribution: amount })
-                                          if(allowance < 0 || amount > allowance) setButtonStatus(!buttonStatus)
-                                        }
-                                      }}
-                                      ariaLabel='Contribute'
-                                      type='number'
-                                      placeholder='0.0'/>
-                                      <InputGroupText>
-                                        <span style={{marginRight:5}}>BNB</span>
-                                        <Button onClick={()=>updateForm({ ...form, contribution: balance < currentToken.maxContributions ? parseFloat(balance) * 0.70 : currentToken.maxContributions })} color='success' isOutline isLight rounded={2}>MAX</Button>
-                                      </InputGroupText>
-                                    </InputGroup>
+                            { isWhitelistParticipant || currentToken.status === '1' ? (<>
+                              <Card borderSize={1} borderColor={'primary'}>
+                                <CardHeader>
+                                  <CardLabel className='text-muted'>
+                                    <CardTitle>
+                                      Your spent allowance
+                                      <p style={{fontSize:20}}><Icon icon={'IncompleteCircle'} /> {myContributions.contributions} / {currentToken.maxContributions} BNB</p>
+                                    </CardTitle>
+                                  </CardLabel>
+                                </CardHeader>
+                                <CardBody>
+                                  <div className='contianer text-center'>
+                                    <h5>Spend How much BNB ?</h5>
+                                    <div className='mt-3 p-3 mb-3' style={{borderRadius:10, border:'1px solid #e3e3e3'}}>
+                                      <small>Balance: {balance}</small>
+                                      <InputGroup>
+                                        <Input 
+                                        value={form.contribution}
+                                        onChange={(event)=>{
+                                          let amount = event.target.value;
+                                          if(parseFloat(amount) <= parseFloat(currentToken.maxContributions)) {
+                                            const allowance = currentToken.maxContributions - myContributions.contributions
+                                            updateForm({ ...form, contribution: amount })
+                                            if(allowance < 0 || amount > allowance) setButtonStatus(!buttonStatus)
+                                          }
+                                        }}
+                                        ariaLabel='Contribute'
+                                        type='number'
+                                        placeholder='0.0'/>
+                                        <InputGroupText>
+                                          <span style={{marginRight:5}}>BNB</span>
+                                          <Button onClick={()=>updateForm({ ...form, contribution: balance < currentToken.maxContributions ? parseFloat(balance) * 0.70 : currentToken.maxContributions })} color='success' isOutline isLight rounded={2}>MAX</Button>
+                                        </InputGroupText>
+                                      </InputGroup>
 
-                                    <small className='text-danger'>{ form.contribution > balance ? 'Insufficient Balance' : null }</small>
-                                    <small className='text-danger'>{ form.contribution > (currentToken.maxContributions - myContributions.contributions) ? 'Exceeded Limit' : null }</small>
+                                      <small className='text-danger'>{ form.contribution > balance ? 'Insufficient Balance' : null }</small>
+                                      <small className='text-danger'>{ form.contribution > (currentToken.maxContributions - myContributions.contributions) ? 'Exceeded Limit' : null }</small>
+                                    </div>
+                                    <h5>You get</h5>
+                                    <h4>{(presaleRate * parseFloat(form.contribution)).toFixed(2)} {currentToken.tokenname}</h4>
+                                    <Button isDisable={buttonStatus} onClick={contributePresale} color='primary' isOutline isLight style={{width:'100%',marginTop:20}}>{ waitingAsync ? 'Loading...' : 'Purchase'}</Button>
                                   </div>
-                                  <h5>You get</h5>
-                                  <h4>{(presaleRate * parseFloat(form.contribution)).toFixed(2)} {currentToken.tokenname}</h4>
-                                  <Button isDisable={buttonStatus} onClick={contributePresale} color='primary' isOutline isLight style={{width:'100%',marginTop:20}}>{ waitingAsync ? 'Loading...' : 'Purchase'}</Button>
-                                </div>
-                              </CardBody>
-                            </Card>) }
+                                </CardBody>
+                              </Card>
+                            </>) : <h6 className='text-capitalize'>Presale {currentToken.status === "0" ? 'Awaiting Start' : "Ended"}</h6> }
                           </>)}
                           
                         </>)}

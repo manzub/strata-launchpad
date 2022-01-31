@@ -104,7 +104,7 @@ const ConnectWalletButton = forwardRef(() => {
           </h4>
           <h5 ref={balanceRef} style={{margin:0}}>0 BNB</h5>
         </div>
-        <p style={{marginTop:10}} className='text-center'>Unicrypt works best with MetaMask on all chains.</p>
+        <p style={{marginTop:10}} className='text-center'>StrataLaunch works best with MetaMask on all chains.</p>
       </ModalBody>
 
       <ModalFooter>

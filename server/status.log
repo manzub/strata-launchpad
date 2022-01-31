@@ -19,3 +19,7 @@ Request Options: http:/POST - /transfer-token
 Request Options: http:/POST - /transfer-token
 Request Options: http:/POST - /transfer-token
 Status Code: 1, Message: Claimed tokens
+Request Options: http:/POST - /set-airdrop-token
+Request Options: http:/POST - /airdrop-tokens
+Status Code: 0, Message: Invalid login: 534-5.7.9 Application-specific password required. Learn more at
+534 5.7.9  https://support.google.com/mail/?p=InvalidSecondFactor p11sm5703153wro.77 - gsmtp
