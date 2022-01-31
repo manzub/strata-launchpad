@@ -25,6 +25,7 @@ import { useToasts } from 'react-toast-notifications';
 import { fetchTokensThunk } from '../../redux/thunks';
 import { loadingTokens } from '../../redux/actions';
 
+const transactionFee = 0.01;
 
 const SingleToken = () => {
   const { metamask, tokensAndPairs } = useSelector(state => state);
@@ -45,6 +46,7 @@ const SingleToken = () => {
   const currentToken = tokens.find(x => x.tokenaddress === address);
 
   const [creatorForm, updateCreatorForm] = useState({ startDate: dateToString(currentToken.startDate), endDate: dateToString(currentToken.presaleEndDate) })
+  const [whitelistForm, updateWhitelistForm] = useState({ whitelist: '' })
 
   let badgeColor1, daysLeft;
   let presaleRate = 0;
@@ -168,7 +170,8 @@ const SingleToken = () => {
 
   const updateCreatorPresale = async () => {
     setWaitingAsync(true)
-    if(isPresaleCreator) {
+    if(isPresaleCreator && metamask) {
+      const { accounts, web3 } = metamask
       const { startDate, endDate } = creatorForm;
       if ((startDate && endDate) !== '') {
         // update presale
@@ -189,16 +192,25 @@ const SingleToken = () => {
           } else { 
             // proceed with update
             try {
-              const postParams = { startDate, presaleEndDate: endDate, tokenaddress: currentToken.tokenaddress, presaleCreator: currentToken.presaleCreator }
-              const response = await strataLyApi.modifyPresale(postParams)
-              if (response.status === "1") {
-                notify('success', 'Presale start/endDate updated successfully', 'Presale Updated')
-                notify('warning', 'Refresh presale tokens to see changes', 'Info')
+              // charge creationFee
+              web3.eth.sendTransaction({ from: accounts[0], to: devaddress, value: web3.utils.toWei(`${transactionFee}`, 'ether') }).then( async (reciept) => {
+                if(reciept && reciept.status === true) {
+                  // modify presale
+                  const postParams = { startDate, presaleEndDate: endDate, tokenaddress: currentToken.tokenaddress, presaleCreator: currentToken.presaleCreator }
+                  const response = await strataLyApi.modifyPresale(postParams)
+                  if (response.status === "1") {
+                    notify('success', 'Presale start/endDate updated successfully', 'Presale Updated')
+                    notify('warning', 'Refresh presale tokens to see changes', 'Info')
+                    clearAsync()
+                  }else {
+                    notify('danger', 'error occurred: '+ response.message, 'Error')
+                    clearAsync()
+                  }
+                }
+              }).catch((error) => {
+                notify('danger', error.message, 'Error')
                 clearAsync()
-              }else {
-                notify('danger', 'error occurred: '+ response.message, 'Error')
-                clearAsync()
-              }
+              })
             } catch (error) {
               notify('danger', 'error occurred: '+ error.message, 'Error')
               clearAsync()
@@ -360,6 +372,43 @@ const SingleToken = () => {
       } catch (error) {
         notify('danger', error.message, 'Error occurred')
         clearAsync()
+      }
+    }
+  }
+
+  // TODO: test add whitelist
+  const addWhitelist = async () => {
+    if (metamask) {
+      const { accounts, web3 } = metamask;
+      if(isPresaleCreator) {
+        // proceed
+        const _addresses = whitelistForm.whitelist.split(',')
+        let errorFound = 0;
+        const addressesList = [];
+        _addresses.forEach((x, idx) => {
+          let item = x.trim()
+          if(item !== (null && '')) {
+            if(web3.utils.isAddress(item)) {
+              addressesList.push(item)
+            } else {
+              errorFound += 1;
+              notify('danger', `Invalid address #${idx+1}`, 'Airdrop error')
+            }
+          }
+        })
+
+        if(errorFound === 0) {
+          let addresses_str = addressesList.join()
+          const response = await strataLyApi.addToWhitelist(addresses_str)
+          if(response.status === 1) {
+            notify('Info', `Added (${addressesList.length}) address(es)`, 'Whitelist')
+          }else {
+            notify('danger', response.message, 'Error occurred')
+            clearAsync()
+          }
+        } else {
+          clearAsync()
+        }
       }
     }
   }
@@ -568,11 +617,13 @@ const SingleToken = () => {
                                     <InputGroup>
                                       <Input 
                                       type='text'
+                                      onChange={(event) => updateWhitelistForm({ ...whitelistForm, whitelist: event.target.value })}
                                       placeholder='user wallet address'/>
                                       <InputGroupText>
-                                        <Button><Icon size='2x' icon='Add' /></Button>
+                                        <Button onClick={addWhitelist}><Icon size='2x' icon='Add' /></Button>
                                       </InputGroupText>
                                     </InputGroup>
+                                    <small>seperate addresses with <strong>,</strong></small>
                                   </div>
 
                                   <div className='mt-3 p-3' style={{borderRadius:5, border:'1px solid #e3e3e3'}}>
@@ -594,13 +645,14 @@ const SingleToken = () => {
 
                                     <Button
                                     onClick={updateCreatorPresale} 
+                                    isDisable={waitingAsync}
                                     className='text-center' 
                                     size='lg' 
                                     isLight 
                                     rounded={0} 
                                     isOutline 
                                     color='primary' 
-                                    style={{width:'100%'}}>Update</Button>
+                                    style={{width:'100%'}}>{ waitingAsync ? 'loading...' : 'Update' }</Button>
                                   </div>
                                 </>) : null }
                               </CardBody>

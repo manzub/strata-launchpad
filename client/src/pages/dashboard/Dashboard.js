@@ -42,7 +42,6 @@ const Dashboard = () => {
 		<PageWrapper title={combineMenu.dashboard.text}>
 			<Page container='fluid'>
         <div className='row'>
-          {/* TODO: market value for top tokens */}
           <div className='col-md-12 mb-5'>
             <div className='intro-text d-flex align-items-center justify-content-between'>
               <div className='info_left'></div>

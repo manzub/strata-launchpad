@@ -23,6 +23,7 @@ import { useToasts } from 'react-toast-notifications';
 import Toasts from '../../components/bootstrap/Toasts';
 import strataLyApi, { devaddress } from '../../strataLaunchApi';
 
+// TODO: revert 1
 const creationFee = 0.001
 const possiblePairs = ['wbnb'];
 
@@ -101,6 +102,7 @@ const LaunchPage = (props) => {
               clearAsync()
             }else {
               notify('danger', result, 'Token error');
+              clearAsync()
             }
           })
         } catch (error) {
@@ -197,11 +199,11 @@ const LaunchPage = (props) => {
               };
 
               var rawTransaction = { from: accounts[0], to: devaddress, value: web3.utils.toWei(`${creationFee}`, 'ether') }
-              web3.eth.sendTransaction(rawTransaction).then(async (reciept) => {
-                if(reciept && reciept.status === true) {
+              // web3.eth.sendTransaction(rawTransaction).then(async (reciept) => {
+                // if(reciept && reciept.status === true) {
                   notify('warning','Confirmed creation fee: now sending token', 'Create Presale')
                   try {
-                    await thisTokenContract.methods.transfer(devaddress, web3.utils.toWei(`${amountRequired}`, 'ether')).send({ from: accounts[0] })
+                    // await thisTokenContract.methods.transfer(devaddress, web3.utils.toWei(`${amountRequired}`, 'ether')).send({ from: accounts[0] })
                     // process transaction
                     await strataLyApi.createPresale(postParams)
                     notify('success', 'Presale created successfully, starts' + form.startDate, 'success')
@@ -210,14 +212,14 @@ const LaunchPage = (props) => {
                     notify('danger', error.message, 'Error occurred')
                     clearAsync()
                   }
-                } else {
-                  notify('danger', 'Transaction Failed: Could not send Creation Fee', 'Error occurred')
-                  clearAsync()
-                }
-              }).catch(error => {
-                notify('danger', error.message, 'Error occurred')
-                clearAsync()
-              })
+                // } else {
+                //   notify('danger', 'Transaction Failed: Could not send Creation Fee', 'Error occurred')
+                //   clearAsync()
+                // }
+              // }).catch(error => {
+              //   notify('danger', error.message, 'Error occurred')
+              //   clearAsync()
+              // })
               
             }
           }

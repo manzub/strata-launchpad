@@ -10,7 +10,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express()
 
-const urlKeys = ['Q7QXTMXCWNJ7HK742I6WG77VUNEIRH12UB']
+const urlKeys = [process.env.BACKEND_API_KEY]
 const mailer = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS } })
 // TODO: replace wss with https
 const providerOrUrl = 'https://bsc-dataseed.binance.org/';
@@ -56,9 +56,15 @@ function verifyApiKey(req, res, next) {
   }
 }
 
+// TODO: watch for error
 function initWeb3() {
-  let provider = new Provider({ mnemonic: { phrase: process.env.MAINNET_MNEMONIC }, providerOrUrl });
-  web3 = new Web3(provider);
+  try {
+    let provider = new Provider({ mnemonic: { phrase: process.env.MAINNET_MNEMONIC }, providerOrUrl });
+    web3 = new Web3(provider);
+  } catch (error) {
+    statusLogger(0, error.message)
+    console.log(error);
+  }
   return;
 }
 
@@ -115,7 +121,6 @@ app.post('/transfer-ether', middleware, async function(req, res) {
   let amountToSend = amount - ( amount * 0.05 )
   const rawTransaction = { from: accounts[0], to: transferTo, value: web3.utils.toWei(`${amountToSend}`, 'ether') }
   try {
-    console.log('phase');
     const reciept = await web3.eth.sendTransaction(rawTransaction)
     if(reciept && reciept.status === true) {
       res.status(200).json({ status: 1, message: 'Refunded '+ amountToSend })
@@ -129,20 +134,6 @@ app.post('/transfer-ether', middleware, async function(req, res) {
     statusLogger(0, error.message)
     res.json({ status: 0, message: error.message })
   }
-  // web3.eth.sendTransaction(rawTransaction).then((reciept) => {
-  //   if(reciept && reciept.status === true) {
-  //     resetWeb3()
-  //     res.status(200).json({ status: 1, message: 'Refunded '+ amountToSend })
-  //   }else {
-  //     resetWeb3()
-  //     statusLogger(0, reciept.toString())
-  //     res.json({ status: 0, message: 'An error occurred, try again later' })
-  //   }
-  // }).catch((error) => {
-  //   resetWeb3()
-  //   statusLogger(0, error.message)
-  //   res.json({ status: 0, message: error.message })
-  // });
 })
 // ========== END ACCOUNT ROUTES =============
 

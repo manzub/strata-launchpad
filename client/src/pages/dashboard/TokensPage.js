@@ -35,7 +35,7 @@ const TableRow = ({ index, image, tokenname, currentCap, hardCap, color, tokenad
     const difference = _startDate.getTime() - today.getTime() 
     let diff_in_days = Math.round(difference / (1000 * 3600 * 24))
     if (diff_in_days === 0) statusText = 'Starts Tomorrow'
-    else statusText = `Starts In ${diff_in_days + 1} day(s)`;
+    else statusText = `Starts In ${diff_in_days} day(s)`;
   }else if (status === '1') {
     const difference =  _endDate.getTime() - today.getTime()
     let diff_in_days = Math.round(difference / (1000 * 3600 * 24))
