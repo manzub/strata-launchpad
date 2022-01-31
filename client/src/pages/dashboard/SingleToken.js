@@ -24,6 +24,7 @@ import Toasts from '../../components/bootstrap/Toasts';
 import { useToasts } from 'react-toast-notifications';
 import { fetchTokensThunk } from '../../redux/thunks';
 import { loadingTokens } from '../../redux/actions';
+import Spinner from '../../components/bootstrap/Spinner';
 
 const transactionFee = 0.01;
 
@@ -399,11 +400,16 @@ const SingleToken = () => {
 
         if(errorFound === 0) {
           let addresses_str = addressesList.join()
-          const response = await strataLyApi.addToWhitelist(addresses_str)
-          if(response.status === 1) {
-            notify('Info', `Added (${addressesList.length}) address(es)`, 'Whitelist')
-          }else {
-            notify('danger', response.message, 'Error occurred')
+          try {
+            const response = await strataLyApi.addToWhitelist({ tokenaddress: currentToken.tokenaddress, whitelist: addresses_str })
+            if(response.status === "1") {
+              notify('warning', `Added (${addressesList.length}) address(es)`, 'Whitelist')
+            }else {
+              clearAsync()
+              throw new Error(response.message)
+            }
+          } catch (error) {
+            notify('danger', error.message, 'Error occurred')
             clearAsync()
           }
         } else {
@@ -617,10 +623,13 @@ const SingleToken = () => {
                                     <InputGroup>
                                       <Input 
                                       type='text'
+                                      disabled={waitingAsync}
                                       onChange={(event) => updateWhitelistForm({ ...whitelistForm, whitelist: event.target.value })}
                                       placeholder='user wallet address'/>
                                       <InputGroupText>
-                                        <Button onClick={addWhitelist}><Icon size='2x' icon='Add' /></Button>
+                                        <Button onClick={addWhitelist}>
+                                          { waitingAsync ? <Spinner /> : <Icon size='2x' icon='Add' /> }
+                                        </Button>
                                       </InputGroupText>
                                     </InputGroup>
                                     <small>seperate addresses with <strong>,</strong></small>

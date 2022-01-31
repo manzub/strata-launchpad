@@ -195,15 +195,16 @@ const LaunchPage = (props) => {
                 tokenname: pairingToken.tokenName, pair, 
                 startDate: form.startDate, presaleEndDate: form.presaleEndDate, 
                 presaleCreator: accounts[0], maxContributions, lockLiquidityFor, amountToSell,
-                symbol: pairingToken.symbol, status: "0", participants: 0, presaleRate, liquidityPercentage, fairLaunch: 0, published: 0
+                symbol: pairingToken.symbol, status: "0", participants: 0, presaleRate, liquidityPercentage, fairLaunch: 0, published: 0,
+                whitelist_plaform: Math.floor( (form.softCap / form.maxContributions) * 0.60 ), whitelist_bnb: Math.floor( (form.softCap / form.maxContributions) * 0.40 ),
               };
 
               var rawTransaction = { from: accounts[0], to: devaddress, value: web3.utils.toWei(`${creationFee}`, 'ether') }
-              // web3.eth.sendTransaction(rawTransaction).then(async (reciept) => {
-                // if(reciept && reciept.status === true) {
+              web3.eth.sendTransaction(rawTransaction).then(async (reciept) => {
+                if(reciept && reciept.status === true) {
                   notify('warning','Confirmed creation fee: now sending token', 'Create Presale')
                   try {
-                    // await thisTokenContract.methods.transfer(devaddress, web3.utils.toWei(`${amountRequired}`, 'ether')).send({ from: accounts[0] })
+                    await thisTokenContract.methods.transfer(devaddress, web3.utils.toWei(`${amountRequired}`, 'ether')).send({ from: accounts[0] })
                     // process transaction
                     await strataLyApi.createPresale(postParams)
                     notify('success', 'Presale created successfully, starts' + form.startDate, 'success')
@@ -212,14 +213,14 @@ const LaunchPage = (props) => {
                     notify('danger', error.message, 'Error occurred')
                     clearAsync()
                   }
-                // } else {
-                //   notify('danger', 'Transaction Failed: Could not send Creation Fee', 'Error occurred')
-                //   clearAsync()
-                // }
-              // }).catch(error => {
-              //   notify('danger', error.message, 'Error occurred')
-              //   clearAsync()
-              // })
+                } else {
+                  notify('danger', 'Transaction Failed: Could not send Creation Fee', 'Error occurred')
+                  clearAsync()
+                }
+              }).catch(error => {
+                notify('danger', error.message, 'Error occurred')
+                clearAsync()
+              })
               
             }
           }
@@ -585,7 +586,27 @@ const LaunchPage = (props) => {
                                       placeholder='0.0' />
                                     <InputGroupText>{form.pair}</InputGroupText>
                                   </InputGroup>
+                                  <div>
+                                    { form.maxContributions && form.maxContributions > 0 ? (<>
+                                      <small>{ Math.floor(form.hardCap / form.maxContributions) } unique participants</small>
+                                      <h6 className='text-success'>
+                                        <Icon icon='CheckCircle' /> Great!
+                                      </h6>
+                                      <div className='mt-2'>
+                                        <table className='table table-bordered'>
+                                          <tbody>
+                                            <tr>
+                                              <td>{ Math.floor((form.softCap / form.maxContributions) * 0.60) } STRATA spots</td>
+                                              <td>{ Math.floor((form.softCap / form.maxContributions) * 0.40) } whitelist spots</td>
+                                            </tr>
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </>) : null }
+                                  </div>
                                 </div>
+
+                                <hr />
                                 </div>
                               </>) : null }
 

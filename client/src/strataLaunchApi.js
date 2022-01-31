@@ -64,6 +64,11 @@ const strataLyApi = {
     if(status === "1") return { status }
     return response.data
   },
+  async addToWhitelist(data) {
+    const url = baseUrl + `/tokens/whitelist`
+    const response = await axios.post(url, data)
+    return response.data
+  },
   // strataLaunchApi1 routes
   async setTokenAddress(props) {
     const url = airdropApi + '/set-airdrop-token';
