@@ -16,11 +16,11 @@
 # misc
 .DS_Store
 *.env
-*.env.production
+# *.env.production
 /client/*.env.local
 /client/*.env.development
 /client/*.env.test.local
-/client/*.env.production
+# /client/*.env.production
 /client/*.env
 truffle-config.js
 *.secret

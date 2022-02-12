@@ -23,3 +23,10 @@ Request Options: http:/POST - /set-airdrop-token
 Request Options: http:/POST - /airdrop-tokens
 Status Code: 0, Message: Invalid login: 534-5.7.9 Application-specific password required. Learn more at
 534 5.7.9  https://support.google.com/mail/?p=InvalidSecondFactor p11sm5703153wro.77 - gsmtp
+Request Options: http:/POST - /set-airdrop-token
+Request Options: http:/POST - /airdrop-tokens
+Status Code: 0, Message: Invalid login: 534-5.7.9 Application-specific password required. Learn more at
+534 5.7.9  https://support.google.com/mail/?p=InvalidSecondFactor b2sm27118125wri.88 - gsmtp
+Request Options: http:/POST - /airdrop-tokens
+Status Code: 0, Message: Invalid login: 534-5.7.9 Application-specific password required. Learn more at
+534 5.7.9  https://support.google.com/mail/?p=InvalidSecondFactor k28sm7660977wms.23 - gsmtp
