@@ -419,7 +419,7 @@ const SingleToken = () => {
 
   const addWhitelist = async () => {
     if (metamask) {
-      const { accounts, web3 } = metamask;
+      const { web3 } = metamask;
       if(isPresaleCreator) {
         // proceed
         const _addresses = whitelistForm.whitelist.split(',')
