@@ -14,6 +14,7 @@ import { metamaskInitialState } from '../../redux/initialState';
 import Modal, { ModalBody } from '../../components/bootstrap/Modal';
 import Button from '../../components/bootstrap/Button';
 import Icon from '../../components/icon/Icon';
+import Teirs from '../TiersDiv/Teirs';
 
 export const WrapperContainer = ({ children, className, ...props }) => {
 	const { rightPanel } = useContext(ThemeContext);
@@ -104,23 +105,22 @@ const Wrapper = () => {
 	return (
 		<>
 			<WrapperContainer>
+        {/* headers */}
 				<DashboardHeader/>
+        {/* teirs div --subheader */}
+        {metamask.web3 && metamask.accounts[0] ? <Teirs /> : null}
+        {/* router-view and contents */}
         <Content />
-
         {/* notify network change modal */}
-        <Modal 
-            isOpen={networksChanged} 
-            setIsOpen={() => setModalStatus(!networksChanged)} 
-            isStaticBackdrop={true}
-            isCentered={true} >
-              <ModalBody className='text-center'>
-                <Icon color={'warning'} size={'5x'} icon={'warning'} />
-                <h3>Network Change Detected</h3>
-                <p className='text-muted'>{process.env.REACT_SITE_APP_NAME} noticed a change in metamask network, 
-                please connect back to the BSC Mainnet from your metamask to continue or click here</p>
-                <Button disabled={waitingAsync} onClick={switchToMainnet} rounded={0} isLight isOutline color={'primary'}>Switch network</Button>
-              </ModalBody>
-          </Modal>
+        <Modal isOpen={networksChanged} setIsOpen={() => setModalStatus(!networksChanged)} isStaticBackdrop={true} isCentered={true} >
+          <ModalBody className='text-center'>
+            <Icon color={'warning'} size={'5x'} icon={'warning'} />
+            <h3>Network Change Detected</h3>
+            <p className='text-muted'>{process.env.REACT_SITE_APP_NAME} noticed a change in metamask network, 
+            please connect back to the BSC Mainnet from your metamask to continue or click here</p>
+            <Button disabled={waitingAsync} onClick={switchToMainnet} rounded={0} isLight isOutline color={'primary'}>Switch network</Button>
+          </ModalBody>
+        </Modal>
 			</WrapperContainer>
 			<WrapperOverlay />
 		</>

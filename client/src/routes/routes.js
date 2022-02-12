@@ -1,5 +1,5 @@
 import React, { lazy } from 'react';
-import { authPages, dashboardPages } from '../menu';
+import { authPages, dashboardPages } from '../static/menu';
 // import Login from '../pages/auth/Login';
 
 const AUTH = {

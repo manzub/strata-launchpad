@@ -6,7 +6,7 @@ import Modal, { ModalBody, ModalFooter, ModalHeader, ModalTitle } from '../../co
 import showNotification from '../../components/extras/showNotification';
 import Icon from '../../components/icon/Icon';
 import useDarkMode from '../../hooks/useDarkMode';
-import { hideAddress } from '../../methods';
+import { hideAddress } from '../../utils/methods';
 import { connectMetaMask } from '../../redux/actions';
 import { metamaskInitialState } from '../../redux/initialState';
 

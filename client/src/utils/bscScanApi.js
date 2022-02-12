@@ -1,4 +1,4 @@
-import { dummyToken } from './dummyBackend';
+import { dummyToken } from '../static/dummyBackend';
 
 const queryString = require('query-string');
 const { default:  axios } = require('axios');

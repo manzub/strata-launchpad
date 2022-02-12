@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PageWrapper from '../../layout/PageWrapper/PageWrapper';
 import Page from '../../layout/Page/Page';
-import { combineMenu } from '../../menu';
+import { combineMenu } from '../../static/menu';
 import Card, { CardActions, CardBody, CardHeader, CardLabel, CardTitle } from '../../components/bootstrap/Card';
 import Button from '../../components/bootstrap/Button';
 import { useNavigate, useParams } from 'react-router-dom';

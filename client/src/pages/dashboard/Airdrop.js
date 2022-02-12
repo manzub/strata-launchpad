@@ -10,10 +10,10 @@ import Icon from '../../components/icon/Icon';
 import Page from '../../layout/Page/Page';
 import PageWrapper from '../../layout/PageWrapper/PageWrapper';
 import { useSelector } from 'react-redux';
-import bscScanApi from "../../bscScanApi";
+import bscScanApi from "../../utils/bscScanApi";
 import { useToasts } from 'react-toast-notifications';
 import Toasts from '../../components/bootstrap/Toasts';
-import strataLyApi, { devaddress } from '../../strataLaunchApi';
+import strataLyApi, { devaddress } from '../../utils/strataLaunchApi';
 
 const creationFee = 0.001;
 
@@ -61,7 +61,7 @@ const Airdrop = () => {
                 // TODO: use divisor instead
                 updateForm({ ...form, balance: toStr.substr(0, toStr.length - 18) })
                 setToken(_token)
-              } else notify('danger', responseData.result, 'Token Error')
+              } else throw new Error(responseData.result)
             }
           })
         } catch (error) {

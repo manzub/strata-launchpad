@@ -1,7 +1,7 @@
-import React, { createRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import PageWrapper from '../../layout/PageWrapper/PageWrapper';
 import Page from '../../layout/Page/Page';
-import { combineMenu } from '../../menu';
+import { combineMenu } from '../../static/menu';
 import Card, { CardActions, CardBody, CardHeader, CardLabel, CardSubTitle, CardTitle } from '../../components/bootstrap/Card';
 import Button from '../../components/bootstrap/Button';
 import Icon from '../../components/icon/Icon';
@@ -12,9 +12,11 @@ import Progress from '../../components/bootstrap/Progress';
 import { useDispatch, useSelector } from 'react-redux';
 import DefaultDashboard from './DefaultDashboard';
 import { BitcoinBtcLogo, EthereumEthLogo, BinanceCoinBnbLogo, StrataTodayLogo, PancakeswapCakeLogo } from '../../components/icon/svg-icons';
-import bscScanApi from '../../bscScanApi';
+import bscScanApi from '../../utils/bscScanApi';
 
+// TODO: use store value to switch between arata and strata
 const Dashboard = () => {
+  const isArata = true
   const { tokens: tokensAndPairs, stock_rates } = useSelector(state => state.tokensAndPairs)
 
   const dispatch = useDispatch();
@@ -37,6 +39,12 @@ const Dashboard = () => {
       })
     }
   }, [stock_rates, dispatch])
+
+  const buyToken = () => {
+    let url = 'https://pancakeswap.finance/swap?outputCurrency='
+    const pancakeSwapLink = isArata ? `${url}0xD07E591E10E41b6B08457C8aa0be6b79369D60a6` : `${url}0x5bE6eC9a5d1EF8390d22342EDA90E2Fc6F1A9f7d`
+    window.open(pancakeSwapLink, '_blank')
+  }
   
 	return (
 		<PageWrapper title={combineMenu.dashboard.text}>
@@ -82,13 +90,14 @@ const Dashboard = () => {
                     <div className='d-flex align-items-center'>
                       <StrataTodayLogo width={90} height={90} />
                       <div style={{marginLeft:10}}>
-                        <h3>Buy StrataToday On</h3>
-                        <Card className={classNames({'text-dark bg-l25-primary bg-l10-primary-hover': !darkModeStatus, 'text-light bg-lo50-primary bg-lo25-primary-hover': darkModeStatus})}>
-                            <CardBody className='p-2 d-flex align-items-center justify-content-evenly'>
-                              <PancakeswapCakeLogo width={20} />
-                              <h6>PancakeSwap</h6>
-                            </CardBody>
-                          </Card>
+                        {/* <h3>Buy StrataToday On</h3> */}
+                        <h3>Buy Arata On</h3>
+                        <Card onClick={buyToken} className={classNames({'text-dark bg-l25-primary bg-l10-primary-hover': !darkModeStatus, 'text-light bg-lo50-primary bg-lo25-primary-hover': darkModeStatus})}>
+                          <CardBody className='p-2 d-flex align-items-center justify-content-evenly'>
+                            <PancakeswapCakeLogo width={20} />
+                            <h6>PancakeSwap</h6>
+                          </CardBody>
+                        </Card>
                       </div>
                     </div>
                   </CardBody>

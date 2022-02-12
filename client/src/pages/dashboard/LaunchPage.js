@@ -11,17 +11,17 @@ import Card, { CardHeader, CardLabel, CardTitle, CardBody, CardFooter, CardFoote
 import Icon from '../../components/icon/Icon';
 import PancakeSwapLogo from '../../components/icon/svg-icons/PancakeswapCakeLogo';
 import UniSwapUniLogo from '../../components/icon/svg-icons/UniswapUniLogo';
-import { dashboardPages } from '../../menu';
+import { dashboardPages } from '../../static/menu';
 import Dropdown, { DropdownItem, DropdownMenu, DropdownToggle } from '../../components/bootstrap/Dropdown';
 import useDarkMode from '../../hooks/useDarkMode';
 import classNames from 'classnames';
 import Option from '../../components/bootstrap/Option';
 import { useNavigate } from 'react-router-dom';
-import bscScanApi from '../../bscScanApi';
-import { dateToString, hideAddress } from '../../methods'
+import bscScanApi from '../../utils/bscScanApi';
+import { dateToString, hideAddress } from '../../utils/methods'
 import { useToasts } from 'react-toast-notifications';
 import Toasts from '../../components/bootstrap/Toasts';
-import strataLyApi, { devaddress } from '../../strataLaunchApi';
+import strataLyApi, { devaddress } from '../../utils/strataLaunchApi';
 
 const creationFee = 1
 const possiblePairs = ['wbnb'];

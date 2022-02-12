@@ -12,21 +12,24 @@ import Icon from '../../components/icon/Icon';
 import Progress from '../../components/bootstrap/Progress';
 import classNames from 'classnames';
 import useDarkMode from '../../hooks/useDarkMode';
-import { dateToString, hideAddress, statusToText } from '../../methods';
+import { baseTokenAbi, dateToString, hideAddress, statusToText } from '../../utils/methods';
 import { useClipboard } from 'use-clipboard-copy';
 import showNotification from '../../components/extras/showNotification';
 import InputGroup, { InputGroupText } from '../../components/bootstrap/forms/InputGroup';
 import Input from '../../components/bootstrap/forms/Input';
 import Tooltips from "../../components/bootstrap/Tooltips"
-import strataLyApi, { devaddress } from '../../strataLaunchApi';
-import bscScanApi from "../../bscScanApi";
+import strataLyApi, { devaddress } from '../../utils/strataLaunchApi';
+import bscScanApi from "../../utils/bscScanApi";
 import Toasts from '../../components/bootstrap/Toasts';
 import { useToasts } from 'react-toast-notifications';
 import { fetchTokensThunk } from '../../redux/thunks';
 import { loadingTokens } from '../../redux/actions';
 import Spinner from '../../components/bootstrap/Spinner';
+import { getTierInfo, tiers } from '../../static/tiersInfo';
 
 const transactionFee = 0.01;
+
+// TODO:  add contribution shares eg 100 bnb * 0.03
 
 const SingleToken = () => {
   const { metamask, tokensAndPairs } = useSelector(state => state);
@@ -38,15 +41,17 @@ const SingleToken = () => {
 
   const [isPresaleCreator, setPresaleCreatorStatus] = useState(false)
   const [isWhitelistParticipant, setWhiteListParticipant] = useState(false)
-  const [form, updateForm] = useState({ contribution: '0' })
   const [balance, setBalance] = useState(0)
   const [myContributions, setContributions] = useState({ contributions: 0, status: 0 })
+  const [tierInfo, setTierInfo] = useState(null);
+  
   const [buttonStatus, setButtonStatus] = useState(true)
   const [waitingAsync, setWaitingAsync] = useState(false)
   
   const tokens = tokensAndPairs.tokens
   const currentToken = tokens.find(x => x.tokenaddress === address);
-
+  
+  const [form, updateForm] = useState({ contribution: '0' })
   const [creatorForm, updateCreatorForm] = useState({ startDate: dateToString(currentToken.startDate), endDate: dateToString(currentToken.presaleEndDate) })
   const [whitelistForm, updateWhitelistForm] = useState({ whitelist: '' })
 
@@ -87,6 +92,7 @@ const SingleToken = () => {
 
   const clearAsync = () => setWaitingAsync(false)
 
+  // TODO: test tiers
   useEffect(() => {
     // get additional token info from bscscan
     !currentToken.bscScanApi && bscScanApi.fetchApi({ action: 'tokeninfo', contractaddress: currentToken.tokenaddress, module: 'token' }).then(response => {
@@ -99,6 +105,7 @@ const SingleToken = () => {
       if(metamask.web3 === null) window.location.href = 'http://' + window.location.host
       // set presale creator status
       if(currentToken.presaleCreator && currentToken.presaleCreator === accounts[0]) setPresaleCreatorStatus(true)
+      // check if current user session is in whitelist
       if(currentToken.whitelist && metamask.accounts[0]) {
         let arr = currentToken.whitelist.split(",")
         arr.every(x => {
@@ -111,6 +118,20 @@ const SingleToken = () => {
           return true; // end
         })
       }
+      // get currrent user session tier information
+      !tierInfo && baseTokenAbi('arata').then(async response => {
+        if(response.status !== '1') throw new Error(response.message)
+        // get balance
+        let contractabi = response.contractAbi;
+        let contract = new metamask.web3.eth.Contract(contractabi, response.tokenaddress)
+        const baseTokenBalance = await contract.methods.balanceOf(metamask.accounts[0]).call()
+        let balanceToEth = metamask.web3.utils.fromWei(baseTokenBalance, 'ether')
+        // get tier info
+        let _info = getTierInfo(balanceToEth);
+        setTierInfo({ ..._info, allowance: balanceToEth})
+      }).catch(error => console.log(error))
+
+      // on accounts changed, check if new account is presaleCreator
       window.ethereum.on('accountsChanged', (newAccount) => {
         setPresaleCreatorStatus(false)
         if(currentToken.presaleCreator && currentToken.presaleCreator === newAccount[0]) setPresaleCreatorStatus(true)
@@ -127,14 +148,20 @@ const SingleToken = () => {
       // get contributions made 
       !isPresaleCreator && fetchMyContributions(accounts[0])
     }
-  }, [setButtonStatus, metamask, form, setPresaleCreatorStatus, currentToken, isPresaleCreator, fetchMyContributions])
+  }, [
+    setButtonStatus, metamask, form, 
+    setPresaleCreatorStatus, currentToken, 
+    isPresaleCreator, fetchMyContributions, 
+    setTierInfo, tierInfo
+  ])
 
 
   const contributePresale = async () => {
     // transfer 
     if(metamask.accounts[0]) {
       const { accounts, web3 } = metamask
-      const allowance = currentToken.maxContributions -  myContributions.contributions
+      // const allowance = currentToken.maxContributions -  myContributions.contributions
+      const allowance = (currentToken.maxContributions * tierInfo.rate) -  myContributions.contributions
       const amount = form.contribution > allowance ? allowance : form.contribution;
       if (allowance > 0 && amount < allowance) {
         setButtonStatus(!buttonStatus)
@@ -359,8 +386,10 @@ const SingleToken = () => {
 
   // ====== presaleCreator only =====
   // TODO: remove liquidity after lockLiquidityFor period
+  // eslint-disable-next-line no-unused-vars
   const removeLiquidity = async () => {
     if(metamask) {
+      // eslint-disable-next-line no-unused-vars
       const { accounts } = metamask
       if(isPresaleCreator) {
         // calculate today > presalestartdate + lockLiquidityFor months
@@ -529,12 +558,7 @@ const SingleToken = () => {
 
                   </div>
                   <div className={classNames('col-md-6 rounded-2 p-5', { 'bg-dark': darkModeStatus, 'bg-light': !darkModeStatus })}>
-                    <Accordion
-                    id='presale-info'
-                    tag='div'
-                    activeItemId={1}
-                    shadow='none'
-                    isFlush={true}>
+                    <Accordion id='presale-info' tag='div' activeItemId={1} shadow='none' isFlush={true}>
                       <AccordionItem
                       id={1}
                       icon='ContactPage'
@@ -580,20 +604,16 @@ const SingleToken = () => {
                         </div>
                       </AccordionItem>
 
-                      <AccordionItem
-                      id={2}
-                      icon='InfoOutline'
-                      title='Presale'
-                      tag='div'
-                      headerTag='h3'>
-                        { !!!metamask.accounts[0] ? (<Button isDisable style={{width:'100%',marginBottom:20}} rounded={0} isOutline color='primary' isLight>
-                          <Icon icon={'ArrowUp'} />
-                          Connect your wallet to continue
-                        </Button>) : (<>
-
+                      <AccordionItem id={2} icon='InfoOutline' title='Presale' tag='div' headerTag='h3'>
+                        { !!!metamask.accounts[0] ? (
+                          <Button isDisable style={{width:'100%',marginBottom:20}} rounded={0} isOutline color='primary' isLight>
+                            <Icon icon={'ArrowUp'} />
+                            Connect your wallet to continue
+                          </Button>
+                        ) : (<>
+                          {/* wallet is connected, allow web3 functions */}
                           { isPresaleCreator ? (<>
-
-                            {/* edit presale card */}
+                            {/* is presale creator, allow edit presale card */}
                             <Card borderSize={1} borderColor={'warning'}>
                               <CardHeader>
                                 <CardLabel className='text-muted'>
@@ -679,55 +699,68 @@ const SingleToken = () => {
                             </Card>
                           </>) : (<>
 
-                            {/* contribute presale card */}
-                            { isWhitelistParticipant || currentToken.status === '1' ? (<>
-                              <Card borderSize={1} borderColor={'primary'}>
-                                <CardHeader>
-                                  <CardLabel className='text-muted'>
-                                    <CardTitle>
-                                      Your spent allowance
-                                      <p style={{fontSize:20}}><Icon icon={'IncompleteCircle'} /> {myContributions.contributions} / {currentToken.maxContributions} BNB</p>
-                                    </CardTitle>
-                                  </CardLabel>
-                                </CardHeader>
-                                <CardBody>
-                                  <div className='contianer text-center'>
-                                    <h5>Spend How much BNB ?</h5>
-                                    <div className='mt-3 p-3 mb-3' style={{borderRadius:10, border:'1px solid #e3e3e3'}}>
-                                      <small>Balance: {balance}</small>
-                                      <InputGroup>
-                                        <Input 
-                                        value={form.contribution}
-                                        onChange={(event)=>{
-                                          let amount = event.target.value;
-                                          if(parseFloat(amount) <= parseFloat(currentToken.maxContributions)) {
-                                            const allowance = currentToken.maxContributions - myContributions.contributions
-                                            updateForm({ ...form, contribution: amount })
-                                            if(allowance < 0 || amount > allowance) setButtonStatus(!buttonStatus)
-                                          }
-                                        }}
-                                        ariaLabel='Contribute'
-                                        type='number'
-                                        placeholder='0.0'/>
-                                        <InputGroupText>
-                                          <span style={{marginRight:5}}>BNB</span>
-                                          <Button onClick={()=>updateForm({ ...form, contribution: balance < currentToken.maxContributions ? parseFloat(balance) * 0.70 : currentToken.maxContributions })} color='success' isOutline isLight rounded={2}>MAX</Button>
-                                        </InputGroupText>
-                                      </InputGroup>
+                            { tierInfo && tierInfo.allowance > 299 ? (<>
+                              {/* has active tier & is regular user/is whitelist participant allow contribute presale  */}
+                              { isWhitelistParticipant || currentToken.status === '1' ? (<>
+                                <Card borderSize={1} borderColor={'primary'}>
+                                  <CardHeader>
+                                    <CardLabel className='text-muted'>
+                                      <CardTitle>
+                                        Your spent allowance
+                                        <p style={{fontSize:20}}><Icon icon={'IncompleteCircle'} /> {myContributions.contributions} / {parseFloat(currentToken.maxContributions * tierInfo.rate).toFixed(2)} BNB</p>
+                                      </CardTitle>
+                                    </CardLabel>
+                                  </CardHeader>
+                                  <CardBody>
+                                    <div className='contianer text-center'>
+                                      <h5>Spend How much BNB ?</h5>
+                                      <div className='mt-3 p-3 mb-3' style={{borderRadius:10, border:'1px solid #e3e3e3'}}>
+                                        <small>Balance: {balance}</small>
+                                        <InputGroup>
+                                          <Input 
+                                          value={form.contribution}
+                                          onChange={(event)=>{
+                                            let amount = event.target.value;
+                                            if(parseFloat(amount) <= parseFloat(currentToken.maxContributions * tierInfo.rate)) {
+                                              const allowance = (currentToken.maxContributions * tierInfo.rate) - myContributions.contributions
+                                              updateForm({ ...form, contribution: amount })
+                                              if(allowance < 0 || amount > allowance) setButtonStatus(!buttonStatus)
+                                            }
+                                          }}
+                                          ariaLabel='Contribute'
+                                          type='number'
+                                          placeholder='0.0'/>
+                                          <InputGroupText>
+                                            <span style={{marginRight:5}}>BNB</span>
+                                            <Button onClick={()=>updateForm({ ...form, contribution: balance < (currentToken.maxContributions * tierInfo.rate) ? parseFloat(balance) * 0.70 : (currentToken.maxContributions * tierInfo.rate) })} color='success' isOutline isLight rounded={2}>MAX</Button>
+                                          </InputGroupText>
+                                        </InputGroup>
 
-                                      <small className='text-danger'>{ form.contribution > balance ? 'Insufficient Balance' : null }</small>
-                                      <small className='text-danger'>{ form.contribution > (currentToken.maxContributions - myContributions.contributions) ? 'Exceeded Limit' : null }</small>
+                                        <small className='text-danger'>{ form.contribution > balance ? 'Insufficient Balance' : null }</small>
+                                        <small className='text-danger'>{ form.contribution > ((currentToken.maxContributions * tierInfo.rate) - myContributions.contributions) ? 'Exceeded Limit' : null }</small>
+                                      </div>
+                                      <h5>You get</h5>
+                                      <h4>{(presaleRate * parseFloat(form.contribution)).toFixed(2)} {currentToken.tokenname}</h4>
+                                      <Button isDisable={buttonStatus} onClick={contributePresale} color='primary' isOutline isLight style={{width:'100%',marginTop:20}}>{ waitingAsync ? 'Loading...' : 'Purchase'}</Button>
                                     </div>
-                                    <h5>You get</h5>
-                                    <h4>{(presaleRate * parseFloat(form.contribution)).toFixed(2)} {currentToken.tokenname}</h4>
-                                    <Button isDisable={buttonStatus} onClick={contributePresale} color='primary' isOutline isLight style={{width:'100%',marginTop:20}}>{ waitingAsync ? 'Loading...' : 'Purchase'}</Button>
+                                  </CardBody>
+                                </Card>
+                              </>) : <h6 className='text-capitalize'>Presale {currentToken.status === "0" ? 'Awaiting Start' : "Ended"}</h6> }
+
+                            </>) : (<>
+                              {/* show message */}
+                              <Card shadow='none'>
+                                <CardBody>
+                                  <div className='text-center container'>
+                                    <h6>You neeed $ARATA to participate in this presale</h6>
+                                    <Button rounded={0} color='primary' isLight isOutline >Buy Arata Now</Button>
+                                    <p><small style={{fontSize:10}}>You need atleast {tiers.elementary.min} $ARATA</small></p>
                                   </div>
                                 </CardBody>
                               </Card>
-                            </>) : <h6 className='text-capitalize'>Presale {currentToken.status === "0" ? 'Awaiting Start' : "Ended"}</h6> }
-                          </>)}
-                          
-                        </>)}
+                            </>) }
+                          </>) }
+                        </>) }
                       </AccordionItem>
                     </Accordion>
                   </div>
@@ -742,46 +775,48 @@ const SingleToken = () => {
                 <div className='row'>
                   <div className='col-md-6 mb-5'>
                     <h3>Project Information</h3>
-                    <table className='table table-modern table-hover'>
-                      <tbody className='text-muted' style={{fontSize:15}}>
-                        <tr>
-                          <td>Project Name</td>
-                          <td>{currentToken.tokenaddress}</td>
-                        </tr>
-                        <tr>
-                          <td>Network</td>
-                          <td>BSC</td>
-                        </tr>
-                        <tr>
-                          <td>Website</td>
-                          <td>{ currentToken.bscScanApi ? (<>
-                            <a href={currentToken.bscScanApi.website} rel='noreferrer' target='_blank'>{currentToken.bscScanApi.website}</a>
-                          </>) : 'null' }</td>
-                        </tr>
-                        <tr>
-                          <td>Socials</td>
-                          <td>{ currentToken.bscScanApi ? (<>
-                            <div className='d-flex align-items-center justify-content-evenly'>
-                              <a href={currentToken.bscScanApi.twitter} rel='noreferrer' target='_blank'><Icon size='2x' icon='Twitter' /></a>
-                              <a href={currentToken.bscScanApi.github} rel='noreferrer' target='_blank'><Icon size='2x' icon='Globe' /></a>
-                              <a href={currentToken.bscScanApi.telegram} rel='noreferrer' target='_blank'><Icon size='2x' icon='Telegram' /></a>
-                            </div>
-                          </>) : 'loading...' }</td>
-                        </tr>
-                        <tr>
-                          <td>White Paper</td>
-                          <td>{ currentToken.bscScanApi ? (<>
-                            <a href={currentToken.bscScanApi.whitepaper} rel='noreferrer' target='_blank'>Open White paper</a>
-                          </>) : 'loading...' }</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                      <table  className='table table-modern table-hover'>
+                        <thead>
+                          <tr></tr>
+                        </thead>
+                        <tbody className='text-muted'>
+                          <tr>
+                            <td>Project Name</td>
+                            <td>{currentToken.tokenaddress.substr(0, currentToken.tokenaddress.length - 15)}...</td>
+                          </tr>
+                          <tr>
+                            <td>Network</td>
+                            <td>BSC</td>
+                          </tr>
+                          <tr>
+                            <td>Website</td>
+                            <td>{ currentToken.bscScanApi ? (<>
+                              <a href={currentToken.bscScanApi.website} rel='noreferrer' target='_blank'>{currentToken.bscScanApi.website}</a>
+                            </>) : 'null' }</td>
+                          </tr>
+                          <tr>
+                            <td>Socials</td>
+                            <td>{ currentToken.bscScanApi ? (<>
+                              <div className='d-flex align-items-center justify-content-evenly'>
+                                <a href={currentToken.bscScanApi.twitter} rel='noreferrer' target='_blank'><Icon size='2x' icon='Twitter' /></a>
+                                <a href={currentToken.bscScanApi.github} rel='noreferrer' target='_blank'><Icon size='2x' icon='Globe' /></a>
+                                <a href={currentToken.bscScanApi.telegram} rel='noreferrer' target='_blank'><Icon size='2x' icon='Telegram' /></a>
+                              </div>
+                            </>) : 'loading...' }</td>
+                          </tr>
+                          <tr>
+                            <td>White Paper</td>
+                            <td>{ currentToken.bscScanApi ? (<>
+                              <a href={currentToken.bscScanApi.whitepaper} rel='noreferrer' target='_blank'>Open White paper</a>
+                            </>) : 'loading...' }</td>
+                          </tr>
+                        </tbody>
+                      </table>
                   </div>
-
-                  <div className='col-md-6'>
+                  <div className='col-md-6 mb-5'>
                     <h3>Token Information</h3>
                     <table className='table table-modern table-hover'>
-                      <tbody className='text-muted' style={{fontSize:15}}>
+                      <tbody className='text-muted'>
                         <tr>
                           <td>Token Name</td>
                           <td>{currentToken.tokenname}</td>
@@ -792,7 +827,7 @@ const SingleToken = () => {
                         </tr>
                         <tr>
                           <td>Contract Address</td>
-                          <td>{ currentToken.bscScanApi ?  currentToken.bscScanApi.contractAddress : 'null'}</td>
+                          <td>{ currentToken.bscScanApi ?  currentToken.bscScanApi.contractAddress.substr(0, currentToken.bscScanApi.contractAddress.length - 15) : 'null'}</td>
                         </tr>
                         <tr>
                           <td>Total Supply</td>
@@ -801,6 +836,7 @@ const SingleToken = () => {
                       </tbody>
                     </table>
                   </div>
+
                 </div>
               </CardBody>
             </Card>

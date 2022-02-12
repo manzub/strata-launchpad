@@ -1,5 +1,5 @@
 import Web3 from "web3";
-import strataLaunchApi from "../strataLaunchApi";
+import strataLaunchApi from "../utils/strataLaunchApi";
 import { connectMetaMask, fetchTokens } from "./actions";
 
 export const connectWalletThunk = () => async dispatch => {

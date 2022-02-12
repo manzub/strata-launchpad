@@ -2,7 +2,7 @@ import React from 'react';
 import PageWrapper from '../../layout/PageWrapper/PageWrapper';
 import Page from '../../layout/Page/Page';
 import Button from '../../components/bootstrap/Button';
-import { combineMenu } from '../../menu';
+import { combineMenu } from '../../static/menu';
 
 const Page404 = () => {
 	return (
