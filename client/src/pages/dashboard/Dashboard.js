@@ -3,6 +3,7 @@ import PageWrapper from '../../layout/PageWrapper/PageWrapper';
 import Page from '../../layout/Page/Page';
 import { combineMenu } from '../../static/menu';
 import Card, { CardActions, CardBody, CardHeader, CardLabel, CardSubTitle, CardTitle } from '../../components/bootstrap/Card';
+import Alert from '../../components/bootstrap/Alert';
 import Button from '../../components/bootstrap/Button';
 import Icon from '../../components/icon/Icon';
 import classNames from 'classnames';
@@ -49,6 +50,9 @@ const Dashboard = () => {
 	return (
 		<PageWrapper title={combineMenu.dashboard.text}>
 			<Page container='fluid'>
+        <Alert color='primary' isLight isDismissible icon='Warning' rounded={0} >
+          StrataLaunch works best with Metamask <Icon icon='Star' />
+        </Alert>
         <div className='row'>
           <div className='col-md-12 mb-5'>
             <div className='intro-text d-flex align-items-center justify-content-between'>

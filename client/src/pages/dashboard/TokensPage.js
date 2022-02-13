@@ -11,6 +11,7 @@ import Icon from '../../components/icon/Icon';
 import { useClipboard } from 'use-clipboard-copy';
 import showNotification from '../../components/extras/showNotification';
 import { useSelector } from 'react-redux';
+import Alert from '../../components/bootstrap/Alert';
 
 // eslint-disable-next-line no-unused-vars
 
@@ -85,6 +86,9 @@ const Dashboard = () => {
 	return (
 		<PageWrapper title={combineMenu.launchpad.text}>
 			<Page container='fluid'>
+        <Alert color='primary' isLight isDismissible icon='Warning' rounded={0} >
+          StrataLaunch works best with Metamask <Icon icon='Star' />
+        </Alert>
         <div className='row'>
           <div className='col-xl-12'>
             <Card

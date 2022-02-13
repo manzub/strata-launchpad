@@ -461,6 +461,9 @@ const SingleToken = () => {
   return(
     <PageWrapper>
       <Page container='fluid'>
+        <Alert color='primary' isLight isDismissible icon='Warning' rounded={0} >
+          StrataLaunch works best with Metamask <Icon icon='Star' />
+        </Alert>
         <div className='row'>
           <div className='col-md-12'>
             <Alert 
