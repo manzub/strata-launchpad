@@ -19,9 +19,10 @@ async function getWeb3() {
     return window.web3
   } else {
     // connect directly to mainnet
-    const provider = new Web3.providers.HttpProvider('https://bsc-dataseed.binance.org/')
-    console.log('No web3 instance injected, using default mainnet url');
-    return new Web3(provider);
+    // const provider = new Web3.providers.HttpProvider('https://bsc-dataseed.binance.org/')
+    // console.log('No web3 instance injected, using default mainnet url');
+    // return new Web3(provider);
+    alert('this platform only works with Metamask or other web3 providers installed on your browser')
   }
 }
 
