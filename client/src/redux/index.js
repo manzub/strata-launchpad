@@ -9,6 +9,7 @@ const allReducers = combineReducers({
   launchPadInfo: launchPadInfoReducer
 })
 
-const store = createStore(allReducers, compose(applyMiddleware(thunk), composeWithDevTools()))
+const store = createStore(allReducers, compose(applyMiddleware(thunk)))
+// const store = createStore(allReducers, compose(applyMiddleware(thunk), composeWithDevTools()))
 
 export default store
