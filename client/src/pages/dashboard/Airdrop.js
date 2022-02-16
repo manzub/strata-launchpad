@@ -197,7 +197,7 @@ const Airdrop = () => {
     <PageWrapper title='Airdrop Instantly'>
       <Page container='fluid'>
         <div className='row mt-5'>
-          <div className='col-md-8 offset-2'>
+          <div className='col-md-8 offset-md-2'>
             <Card>
               <CardHeader>
                 <CardTitle tag='h4'>Airdrop your token to all your users instantly with the click of a button!</CardTitle>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import PageWrapper from '../../layout/PageWrapper/PageWrapper';
 import Page from '../../layout/Page/Page';
 import { combineMenu } from '../../static/menu';
@@ -12,12 +12,24 @@ import { useClipboard } from 'use-clipboard-copy';
 import showNotification from '../../components/extras/showNotification';
 import { useSelector } from 'react-redux';
 import Alert from '../../components/bootstrap/Alert';
+import useDeviceScreen from '../../hooks/useDeviceScreen';
 
 // eslint-disable-next-line no-unused-vars
 
 const TableRow = ({ index, image, tokenname, currentCap, hardCap, color, tokenaddress, participants, status, startDate, presaleEndDate }) => {
   const clipboard = useClipboard();
   const navigate = useNavigate();
+  const deviceScreen = useDeviceScreen();
+
+  const [mobileTable, setMobileTableStatus] = useState(
+    deviceScreen?.width >= process.env.REACT_APP_MOBILE_BREAKPOINT_SIZE
+  )
+
+  useEffect(() => {
+    if(deviceScreen?.width <= process.env.REACT_APP_MOBILE_BREAKPOINT_SIZE) {
+      setMobileTableStatus(true)
+    }else setMobileTableStatus(false)
+  }, [deviceScreen?.width])
 
   const ImageOrIcon = () => {
     if(image) {
@@ -43,6 +55,25 @@ const TableRow = ({ index, image, tokenname, currentCap, hardCap, color, tokenad
     statusText = `${diff_in_days + 1} day(s) left`
   }
 
+  if(mobileTable) {
+    return (<tr>
+      <td>{index}</td>
+      <td>{tokenname} <Icon style={{cursor:"pointer"}} onClick={() => {
+        clipboard.copy(tokenaddress);
+        showNotification(
+          'Copied to Clipboard',
+          <div className='row d-flex align-items-center'>
+            <div className='col-auto'>
+              <Icon icon={'CardHeading'} className='h1' />
+            </div>
+            <div className='col-auto h5'>{tokenaddress}</div>
+          </div>,
+        );
+      }} icon={'ContentCopy'} /></td>
+      <td>{ statusText }</td>
+      <td><Button className='rounded-0' color='primary' onClick={() => navigate(`/dashboard/token/${tokenaddress}`)} isOutline isLight>View</Button></td>
+    </tr>)
+  }
   return(<tr>
     <td>{index}</td>
     <td><ImageOrIcon /></td>
@@ -68,7 +99,6 @@ const TableRow = ({ index, image, tokenname, currentCap, hardCap, color, tokenad
   </tr>)
 }
 
-// eslint-disable-next-line no-unused-vars
 const filtersCode = ['1', '2', '0', '3', "all"]
 const filtersText = ['live', 'completed', 'awaiting start', 'failed', "all"]
 const Dashboard = () => {
