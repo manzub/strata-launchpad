@@ -23,8 +23,8 @@ import { useToasts } from 'react-toast-notifications';
 import Toasts from '../../components/bootstrap/Toasts';
 import strataLyApi, { devaddress } from '../../utils/strataLaunchApi';
 
-const creationFee = 1
-const possiblePairs = ['wbnb'];
+const creationFee = 0.001
+const possiblePairs = ['bnb'];
 
 const LaunchPage = (props) => {
   const { launchPadInfo, metamask } = useSelector(state => state);
@@ -105,7 +105,7 @@ const LaunchPage = (props) => {
             }
           })
         } catch (error) {
-          notify('danger', 'Error occurred', 'Token error')
+          notify('danger', `Error occurred: ${error.message}, try again later`, 'Token error')
           clearAsync()
         }
       }

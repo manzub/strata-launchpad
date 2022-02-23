@@ -9,7 +9,7 @@ const url = 'https://api.bscscan.com/api';
 const bscScanApi =  {
   async fetchApi(props) {
     let params = queryString.stringify({apiKey: apiKey, ...props})
-    if (props.action === 'tokeninfo') return dummyToken
+    if (props.action && props.action === 'tokeninfo') return dummyToken
     const response = await axios.get(`${url}?${params}`)
     return response.data
   },

@@ -160,8 +160,9 @@ const SingleToken = () => {
     // transfer 
     if(metamask.accounts[0]) {
       const { accounts, web3 } = metamask
-      // const allowance = currentToken.maxContributions -  myContributions.contributions
-      const allowance = (currentToken.maxContributions * tierInfo.rate) -  myContributions.contributions
+      const allowance = currentToken.maxContributions -  myContributions.contributions
+      // TODO: revert 
+      // const allowance = (currentToken.maxContributions * tierInfo.rate) -  myContributions.contributions
       const amount = form.contribution > allowance ? allowance : form.contribution;
       if (allowance > 0 && amount < allowance) {
         setButtonStatus(!buttonStatus)
@@ -702,10 +703,56 @@ const SingleToken = () => {
                             </Card>
                           </>) : (<>
 
+                            { isWhitelistParticipant || currentToken.status === '1' ? (<>
+                            <Card borderSize={1} borderColor={'primary'}>
+                                <CardHeader>
+                                  <CardLabel className='text-muted'>
+                                    <CardTitle>
+                                      Your spent allowance
+                                      <p style={{fontSize:20}}><Icon icon={'IncompleteCircle'} /> {myContributions.contributions} / {currentToken.maxContributions} BNB</p>
+                                    </CardTitle>
+                                  </CardLabel>
+                                </CardHeader>
+                                <CardBody>
+                                  <div className='contianer text-center'>
+                                    <h5>Spend How much BNB ?</h5>
+                                    <div className='mt-3 p-3 mb-3' style={{borderRadius:10, border:'1px solid #e3e3e3'}}>
+                                      <small>Balance: {balance}</small>
+                                      <InputGroup>
+                                        <Input 
+                                        value={form.contribution}
+                                        onChange={(event)=>{
+                                          let amount = event.target.value;
+                                          if(parseFloat(amount) <= parseFloat(currentToken.maxContributions)) {
+                                            const allowance = currentToken.maxContributions - myContributions.contributions
+                                            updateForm({ ...form, contribution: amount })
+                                            if(allowance < 0 || amount > allowance) setButtonStatus(!buttonStatus)
+                                          }
+                                        }}
+                                        ariaLabel='Contribute'
+                                        type='number'
+                                        placeholder='0.0'/>
+                                        <InputGroupText>
+                                          <span style={{marginRight:5}}>BNB</span>
+                                          <Button onClick={()=>updateForm({ ...form, contribution: balance < currentToken.maxContributions ? parseFloat(balance) * 0.70 : currentToken.maxContributions })} color='success' isOutline isLight rounded={2}>MAX</Button>
+                                        </InputGroupText>
+                                      </InputGroup>
+
+                                      <small className='text-danger'>{ form.contribution > balance ? 'Insufficient Balance' : null }</small>
+                                      <small className='text-danger'>{ form.contribution > (currentToken.maxContributions - myContributions.contributions) ? 'Exceeded Limit' : null }</small>
+                                    </div>
+                                    <h5>You get</h5>
+                                    <h4>{(presaleRate * parseFloat(form.contribution)).toFixed(2)} {currentToken.tokenname}</h4>
+                                    <Button isDisable={buttonStatus} onClick={contributePresale} color='primary' isOutline isLight style={{width:'100%',marginTop:20}}>{ waitingAsync ? 'Loading...' : 'Purchase'}</Button>
+                                  </div>
+                                </CardBody>
+                              </Card>
+                              </>) : <h6 className='text-capitalize'>Presale {currentToken.status === "0" ? 'Awaiting Start' : "Ended"}</h6> }
+                            {/* TODO: revert */}
                             { tierInfo && tierInfo.allowance > 299 ? (<>
                               {/* has active tier & is regular user/is whitelist participant allow contribute presale  */}
                               { isWhitelistParticipant || currentToken.status === '1' ? (<>
-                                <Card borderSize={1} borderColor={'primary'}>
+                                {/* <Card borderSize={1} borderColor={'primary'}>
                                   <CardHeader>
                                     <CardLabel className='text-muted'>
                                       <CardTitle>
@@ -747,12 +794,12 @@ const SingleToken = () => {
                                       <Button isDisable={buttonStatus} onClick={contributePresale} color='primary' isOutline isLight style={{width:'100%',marginTop:20}}>{ waitingAsync ? 'Loading...' : 'Purchase'}</Button>
                                     </div>
                                   </CardBody>
-                                </Card>
+                                </Card> */}
                               </>) : <h6 className='text-capitalize'>Presale {currentToken.status === "0" ? 'Awaiting Start' : "Ended"}</h6> }
 
                             </>) : (<>
                               {/* show message */}
-                              <Card shadow='none'>
+                              {/* <Card shadow='none'>
                                 <CardBody>
                                   <div className='text-center container'>
                                     <h6>You neeed $ARATA to participate in this presale</h6>
@@ -760,8 +807,10 @@ const SingleToken = () => {
                                     <p><small style={{fontSize:10}}>You need atleast {tiers.elementary.min} $ARATA</small></p>
                                   </div>
                                 </CardBody>
-                              </Card>
+                              </Card> */}
                             </>) }
+
+                            
                           </>) }
                         </>) }
                       </AccordionItem>

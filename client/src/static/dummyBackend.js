@@ -35,14 +35,14 @@ export const dummyToken = {
   "message":"OK",
   "result":[
      {
-        "contractAddress":"0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
-        "tokenName":"PancakeSwap Token",
-        "symbol":"Cake",
+        "contractAddress":"0x5bE6eC9a5d1EF8390d22342EDA90E2Fc6F1A9f7d",
+        "tokenName":"Strata Today",
+        "symbol":"Strata",
         "divisor":"8",
-        "tokenType":"ERC20",
-        "totalSupply":"431889535.843059000000000000",
+        "tokenType":"BEP20",
+        "totalSupply":"22000000.00000000",
         "blueCheckmark":"true",
-        "description":"PancakeSwap is a yield farming project whereby users can get FLIP (LP token) for staking and get CAKE token as reward. CAKE holders can swap CAKE for SYRUP for additional incentivized staking.",
+        "description":"StrataToday is a yield farming project whereby users can get FLIP (LP token) for staking and get CAKE token as reward.",
         "website":"https://pancakeswap.finance/",
         "email":"PancakeSwap@gmail.com",
         "blog":"https://medium.com/@pancakeswap",
@@ -57,7 +57,7 @@ export const dummyToken = {
         "linkedin":"",
         "discord":"",
         "whitepaper":"",
-        "tokenPriceUSD":"23.9300000000"
+        "tokenPriceUSD":"2.9300000000"
      }
   ]
 }

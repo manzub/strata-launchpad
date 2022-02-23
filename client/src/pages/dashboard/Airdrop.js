@@ -15,7 +15,8 @@ import { useToasts } from 'react-toast-notifications';
 import Toasts from '../../components/bootstrap/Toasts';
 import strataLyApi, { devaddress } from '../../utils/strataLaunchApi';
 
-const creationFee = 0.001;
+// TODO: revert for test
+const creationFee = 0.01;
 
 const Airdrop = () => {
   const { metamask } = useSelector(state => state);
