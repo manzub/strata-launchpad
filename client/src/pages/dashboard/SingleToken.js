@@ -50,6 +50,7 @@ const SingleToken = () => {
   
   const tokens = tokensAndPairs.tokens
   const currentToken = tokens.find(x => x.tokenaddress === address);
+  const [tokenInfo, updateTokenInfo] = useState(null);
   
   const [form, updateForm] = useState({ contribution: '0' })
   const [creatorForm, updateCreatorForm] = useState({ startDate: dateToString(currentToken.startDate), endDate: dateToString(currentToken.presaleEndDate) })
@@ -94,9 +95,11 @@ const SingleToken = () => {
 
   useEffect(() => {
     // get additional token info from bscscan
-    !currentToken.bscScanApi && bscScanApi.fetchApi({ action: 'tokeninfo', contractaddress: currentToken.tokenaddress, module: 'token' }).then(response => {
-      currentToken.bscScanApi = response.result[0]
-    })
+    if(!tokenInfo) {
+      bscScanApi.fetchApi({ action: 'tokeninfo', contractaddress: currentToken.tokenaddress, module: 'token' }).then(response => {
+        updateTokenInfo(response.result[0])
+      })
+    }
 
     if(metamask.accounts[0]) {
       const { web3, accounts } = metamask
@@ -151,7 +154,7 @@ const SingleToken = () => {
     setButtonStatus, metamask, form, 
     setPresaleCreatorStatus, currentToken, 
     isPresaleCreator, fetchMyContributions, 
-    setTierInfo, tierInfo
+    setTierInfo, tierInfo, tokenInfo, updateTokenInfo
   ])
 
 
@@ -522,10 +525,10 @@ const SingleToken = () => {
                       <div className='token-info text-left'>
                         <h2>{currentToken.tokenname}</h2>
                         <div style={{margin:10}} className='action-links d-flex align-items-center justify-content-evenly'>
-                          { currentToken.bscScanApi ? (<>
-                            <a href={currentToken.bscScanApi.twitter} rel='noreferrer' target='_blank'><Icon size='2x' icon='Twitter' /></a>
-                            <a href={currentToken.bscScanApi.github} rel='noreferrer' target='_blank'><Icon size='2x' icon='Globe' /></a>
-                            <a href={currentToken.bscScanApi.telegram} rel='noreferrer' target='_blank'><Icon size='2x' icon='Telegram' /></a>
+                          { tokenInfo ? (<>
+                            <a href={tokenInfo.twitter} rel='noreferrer' target='_blank'><Icon size='2x' icon='Twitter' /></a>
+                            <a href={tokenInfo.github} rel='noreferrer' target='_blank'><Icon size='2x' icon='Globe' /></a>
+                            <a href={tokenInfo.telegram} rel='noreferrer' target='_blank'><Icon size='2x' icon='Telegram' /></a>
                           </>) : '' }
                         </div>
                         <div className='redirect-links d-flex align-items-center justify-content-between'>
@@ -794,24 +797,24 @@ const SingleToken = () => {
                           </tr>
                           <tr>
                             <td>Website</td>
-                            <td>{ currentToken.bscScanApi ? (<>
-                              <a href={currentToken.bscScanApi.website} rel='noreferrer' target='_blank'>{currentToken.bscScanApi.website}</a>
+                            <td>{ tokenInfo ? (<>
+                              <a href={tokenInfo.website} rel='noreferrer' target='_blank'>{tokenInfo.website}</a>
                             </>) : 'null' }</td>
                           </tr>
                           <tr>
                             <td>Socials</td>
-                            <td>{ currentToken.bscScanApi ? (<>
+                            <td>{ tokenInfo ? (<>
                               <div className='d-flex align-items-center justify-content-evenly'>
-                                <a href={currentToken.bscScanApi.twitter} rel='noreferrer' target='_blank'><Icon size='2x' icon='Twitter' /></a>
-                                <a href={currentToken.bscScanApi.github} rel='noreferrer' target='_blank'><Icon size='2x' icon='Globe' /></a>
-                                <a href={currentToken.bscScanApi.telegram} rel='noreferrer' target='_blank'><Icon size='2x' icon='Telegram' /></a>
+                                <a href={tokenInfo.twitter} rel='noreferrer' target='_blank'><Icon size='2x' icon='Twitter' /></a>
+                                <a href={tokenInfo.github} rel='noreferrer' target='_blank'><Icon size='2x' icon='Globe' /></a>
+                                <a href={tokenInfo.telegram} rel='noreferrer' target='_blank'><Icon size='2x' icon='Telegram' /></a>
                               </div>
                             </>) : 'loading...' }</td>
                           </tr>
                           <tr>
                             <td>White Paper</td>
-                            <td>{ currentToken.bscScanApi ? (<>
-                              <a href={currentToken.bscScanApi.whitepaper} rel='noreferrer' target='_blank'>Open White paper</a>
+                            <td>{ tokenInfo ? (<>
+                              <a href={tokenInfo.whitepaper} rel='noreferrer' target='_blank'>Open White paper</a>
                             </>) : 'loading...' }</td>
                           </tr>
                         </tbody>
@@ -831,11 +834,11 @@ const SingleToken = () => {
                         </tr>
                         <tr>
                           <td>Contract Address</td>
-                          <td>{ currentToken.bscScanApi ?  currentToken.bscScanApi.contractAddress.substr(0, currentToken.bscScanApi.contractAddress.length - 15) : 'null'}</td>
+                          <td>{ tokenInfo ?  tokenInfo.contractAddress.substr(0, tokenInfo.contractAddress.length - 15) : 'null'}</td>
                         </tr>
                         <tr>
                           <td>Total Supply</td>
-                          <td>{ currentToken.bscScanApi ? `${new Intl.NumberFormat().format(currentToken.bscScanApi.totalSupply.substr(0, currentToken.bscScanApi.totalSupply.length - currentToken.bscScanApi.divisor))}` : 'loading...' }</td>
+                          <td>{ tokenInfo ? `${new Intl.NumberFormat().format(tokenInfo.totalSupply.substr(0, tokenInfo.totalSupply.length - tokenInfo.divisor))}` : 'loading...' }</td>
                         </tr>
                       </tbody>
                     </table>
