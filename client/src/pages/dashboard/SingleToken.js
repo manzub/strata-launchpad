@@ -157,6 +157,12 @@ const SingleToken = () => {
     setTierInfo, tierInfo, tokenInfo, updateTokenInfo
   ])
 
+  const isArata = true
+  const buyToken = () => {
+    let url = 'https://pancakeswap.finance/swap?outputCurrency='
+    const pancakeSwapLink = isArata ? `${url}0xD07E591E10E41b6B08457C8aa0be6b79369D60a6` : `${url}0x5bE6eC9a5d1EF8390d22342EDA90E2Fc6F1A9f7d`
+    window.open(pancakeSwapLink, '_blank')
+  }
 
   const contributePresale = async () => {
     // transfer 
@@ -758,7 +764,7 @@ const SingleToken = () => {
                                 <CardBody>
                                   <div className='text-center container'>
                                     <h6>You neeed $ARATA to participate in this presale</h6>
-                                    <Button rounded={0} color='primary' isLight isOutline >Buy Arata Now</Button>
+                                    <Button onClick={buyToken} rounded={0} color='primary' isLight isOutline >Buy Arata Now</Button>
                                     <p><small style={{fontSize:10}}>You need atleast {tiers.elementary.min} $ARATA</small></p>
                                   </div>
                                 </CardBody>
