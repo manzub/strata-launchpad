@@ -44,7 +44,7 @@ export const DashboardHeader = () => {
   return(<Header>
     <HeaderLeft>
       <div className='brandname'>
-        <h5>Strata Launchpad</h5>
+        <h5>Arata Launchpad</h5>
         <Nav className='justify-content-center' design='pills' isVertical={mobileDesign} >
           { Object.keys(navigations.navigationMenu).map( item => (
             <NavItem key={navigations.navigationMenu[item].path}>
