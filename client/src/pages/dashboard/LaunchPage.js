@@ -23,7 +23,7 @@ import { useToasts } from 'react-toast-notifications';
 import Toasts from '../../components/bootstrap/Toasts';
 import strataLyApi, { devaddress } from '../../utils/strataLaunchApi';
 
-const creationFee = 0.001
+const creationFee = 1
 const possiblePairs = ['bnb'];
 
 const LaunchPage = (props) => {

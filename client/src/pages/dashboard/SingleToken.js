@@ -25,7 +25,8 @@ import { useToasts } from 'react-toast-notifications';
 import { fetchTokensThunk } from '../../redux/thunks';
 import { loadingTokens } from '../../redux/actions';
 import Spinner from '../../components/bootstrap/Spinner';
-import { getTierInfo, tiers } from '../../static/tiersInfo';
+// import { getTierInfo, tiers } from '../../static/tiersInfo';
+import { getTierInfo } from '../../static/tiersInfo';
 
 const transactionFee = 0.01;
 
